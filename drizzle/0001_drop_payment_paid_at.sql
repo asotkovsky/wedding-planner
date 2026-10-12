@@ -1,0 +1,1 @@
+ALTER TABLE "vendor_payments" DROP COLUMN "paid_at";

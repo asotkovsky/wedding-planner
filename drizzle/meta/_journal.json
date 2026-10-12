@@ -8,6 +8,48 @@
       "when": 1791766560259,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791768407536,
+      "tag": "0001_drop_payment_paid_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791768409371,
+      "tag": "0002_add_payment_paid_on",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791771237333,
+      "tag": "0003_chat_exact_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791772390608,
+      "tag": "0004_wedding_colors",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791773407370,
+      "tag": "0005_guest_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791774406247,
+      "tag": "0006_plus_one_of",
+      "breakpoints": true
     }
   ]
 }

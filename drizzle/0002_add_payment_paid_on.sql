@@ -1,0 +1,1 @@
+ALTER TABLE "vendor_payments" ADD COLUMN "paid_on" date;

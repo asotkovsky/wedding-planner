@@ -9,7 +9,42 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-display);
+  --font-display: var(--font-display);
+
+  /* Wedding colors: --brand / --pop are set per wedding (see src/lib/theme.ts). */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: color-mix(in oklch, var(--brand) 14%, white);
+  --color-pop: var(--pop);
+  --color-pop-foreground: var(--pop-foreground);
+  --color-pop-soft: color-mix(in oklch, var(--pop) 22%, white);
+
+  /* Status colors (fixed, so meaning never depends on a wedding's palette). */
+  --color-yes: #15803d;
+  --color-yes-soft: #dcfce7;
+  --color-maybe: #a16207;
+  --color-maybe-soft: #fef3c7;
+  --color-no: #6b6b76;
+  --color-no-soft: #f1f1f4;
+  --color-late: #b91c1c;
+  --color-late-soft: #fee2e2;
+
+  /* Sticker chip palette for section icons. */
+  --color-rose: #e11d48;
+  --color-rose-soft: #ffe0e7;
+  --color-sun: #b45309;
+  --color-sun-soft: #fff1c2;
+  --color-mint: #047857;
+  --color-mint-soft: #d1fadf;
+  --color-sky: #1d4ed8;
+  --color-sky-soft: #dbeafe;
+  --color-lilac: #6d28d9;
+  --color-lilac-soft: #ede4ff;
+  --color-peach: #c2410c;
+  --color-peach-soft: #ffe4d6;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,72 +84,45 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  /* Defaults ("Coral pop"); a wedding's own colors override these on its layout. */
+  --brand: #ff6b5b;
+  --brand-foreground: #1f1f23;
+  --brand-ink: #c0392b;
+  --pop: #ffc93c;
+  --pop-foreground: #1f1f23;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #fcfcfd;
+  --foreground: #1f1f23;
+  --card: #ffffff;
+  --card-foreground: #1f1f23;
+  --popover: #ffffff;
+  --popover-foreground: #1f1f23;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: #f4f4f6;
+  --secondary-foreground: #1f1f23;
+  --muted: #f4f4f6;
+  --muted-foreground: #6b6b76;
+  --accent: #f4f4f6;
+  --accent-foreground: #1f1f23;
+  --destructive: #dc2626;
+  --border: #e7e7ec;
+  --input: #dcdce3;
+  --ring: var(--brand);
+  --chart-1: var(--brand);
+  --chart-2: var(--pop);
+  --chart-3: #22c55e;
+  --chart-4: #60a5fa;
+  --chart-5: #a78bfa;
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1f1f23;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: #f4f4f6;
+  --sidebar-accent-foreground: #1f1f23;
+  --sidebar-border: #e7e7ec;
+  --sidebar-ring: var(--brand);
 }
 
 @layer base {
@@ -122,9 +130,31 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply overflow-x-clip bg-background text-foreground;
   }
   html {
     @apply font-sans;
   }
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+}
+
+/* "Sticker" look: chunky outline with a hard offset shadow. */
+@utility sticker {
+  border: 2px solid var(--foreground);
+  box-shadow: 3px 3px 0 0 var(--foreground);
+}
+
+@utility sticker-sm {
+  border: 1.5px solid var(--foreground);
+  box-shadow: 2px 2px 0 0 var(--foreground);
+}
+
+/* Subtle confetti-dot backdrop for hero areas. */
+@utility bg-dots {
+  background-image: radial-gradient(color-mix(in oklch, var(--brand) 35%, transparent) 1.2px, transparent 1.2px);
+  background-size: 18px 18px;
 }

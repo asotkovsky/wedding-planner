@@ -37,11 +37,13 @@ export function AuthForm({ mode, googleEnabled }: { mode: "sign-in" | "sign-up";
   const otherHref = `${mode === "sign-in" ? "/sign-up" : "/sign-in"}${next !== "/weddings" ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm rounded-3xl sticker">
       <CardHeader>
-        <CardTitle>{mode === "sign-in" ? "Sign in" : "Create an account"}</CardTitle>
+        <CardTitle className="font-display text-2xl font-extrabold">
+          {mode === "sign-in" ? "Welcome back! 👋" : "Let's get planning! 💍"}
+        </CardTitle>
         <CardDescription>
-          {mode === "sign-in" ? "Welcome back to your wedding planner." : "Start planning your wedding."}
+          {mode === "sign-in" ? "Your wedding to-dos missed you." : "Create your account. It takes about ten seconds."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

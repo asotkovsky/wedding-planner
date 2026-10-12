@@ -1,5 +1,5 @@
 // Vendors, payments and budget. All amounts are integer cents in the wedding's currency.
-import { date, index, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { date, index, integer, pgEnum, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./columns";
 import { weddings } from "./weddings";
 
@@ -44,7 +44,7 @@ export const vendors = pgTable(
   (t) => [index("vendors_wedding_idx").on(t.weddingId)],
 );
 
-// Deposits and installments. A payment is paid when paid_at is set.
+// Deposits and installments. A payment is paid when paid_on is set.
 export const vendorPayments = pgTable(
   "vendor_payments",
   {
@@ -58,7 +58,7 @@ export const vendorPayments = pgTable(
     description: text("description").notNull(),
     amountCents: integer("amount_cents").notNull(),
     dueDate: date("due_date"),
-    paidAt: timestamp("paid_at", { withTimezone: true }),
+    paidOn: date("paid_on"),
     method: text("method"),
     ...timestamps(),
   },

@@ -8,6 +8,9 @@ import { db } from "@/db";
 import { weddingInvites, weddingMembers, weddings } from "@/db/schema";
 import { requireWeddingAccess } from "@/lib/access";
 import { logActivity } from "@/lib/activity";
+import { normalizeHex } from "@/lib/theme";
+import { runAction } from "@/server/action";
+import { updateGuestPageContent, type GuestPageContentInput } from "@/server/guest-page";
 
 export type FormState = { ok?: boolean; error?: string; errors?: Record<string, string[] | undefined> } | undefined;
 
@@ -135,4 +138,31 @@ async function assertNotLastOwner(weddingId: string, userId: string, newRole: st
   if (owners.length === 1 && owners[0].userId === userId) {
     throw new Error("A wedding must keep at least one owner.");
   }
+}
+
+export async function updateWeddingColors(
+  weddingId: string,
+  colors: { primary: string | null; accent: string | null },
+): Promise<FormState> {
+  const { user } = await requireWeddingAccess(weddingId, "editor");
+  const primary = colors.primary === null ? null : normalizeHex(colors.primary);
+  const accent = colors.accent === null ? null : normalizeHex(colors.accent);
+  if ((colors.primary !== null && !primary) || (colors.accent !== null && !accent)) {
+    return { error: "Colors must be hex values like #FF6B5B" };
+  }
+  await db.update(weddings).set({ themePrimary: primary, themeAccent: accent }).where(eq(weddings.id, weddingId));
+  await logActivity({
+    weddingId,
+    actorUserId: user.id,
+    action: "update",
+    entityType: "wedding",
+    entityId: weddingId,
+    summary: "Updated the wedding colors",
+  });
+  revalidatePath(`/w/${weddingId}`, "layout");
+  return { ok: true };
+}
+
+export async function updateGuestPage(weddingId: string, input: GuestPageContentInput) {
+  return runAction(weddingId, (ctx) => updateGuestPageContent(ctx, input));
 }

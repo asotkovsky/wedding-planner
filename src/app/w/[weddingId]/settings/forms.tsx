@@ -1,8 +1,9 @@
 "use client";
 
 import { Copy, Trash2 } from "lucide-react";
-import { useActionState, useEffect, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { MoneyField } from "@/components/money-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ export function WeddingDetailsForm({
   disabled: boolean;
 }) {
   const [state, action, pending] = useActionState(updateWeddingDetails.bind(null, wedding.id), undefined);
+  const [currency, setCurrency] = useState(wedding.currency);
   useEffect(() => {
     if (state?.ok) toast.success("Saved");
   }, [state]);
@@ -37,7 +39,7 @@ export function WeddingDetailsForm({
         <Field name="timezone" label="Timezone" defaultValue={wedding.timezone} errors={errors.timezone} />
         <div className="space-y-2">
           <Label>Currency</Label>
-          <Select name="currency" defaultValue={wedding.currency}>
+          <Select name="currency" value={currency} onValueChange={setCurrency}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -50,10 +52,10 @@ export function WeddingDetailsForm({
             </SelectContent>
           </Select>
         </div>
-        <Field
+        <MoneyField
+          currency={currency}
           name="totalBudget"
           label="Total budget"
-          type="number"
           defaultValue={wedding.totalBudgetCents != null ? String(wedding.totalBudgetCents / 100) : ""}
           errors={errors.totalBudget}
         />

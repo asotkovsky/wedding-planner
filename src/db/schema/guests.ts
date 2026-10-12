@@ -6,10 +6,12 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  uniqueIndex,
   text,
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { id, timestamps } from "./columns";
 import { weddings } from "./weddings";
 
@@ -38,6 +40,8 @@ export const households = pgTable(
     country: text("country"),
     notes: text("notes"),
     rsvpSubmittedAt: timestamp("rsvp_submitted_at", { withTimezone: true }),
+    // Free-text note the household left for the couple with their RSVP.
+    guestMessage: text("guest_message"),
     ...timestamps(),
   },
   (t) => [index("households_wedding_idx").on(t.weddingId)],
@@ -61,12 +65,19 @@ export const guests = pgTable(
     side: guestSide("side"),
     ageGroup: ageGroup("age_group").notNull().default("adult"),
     isPlusOne: boolean("is_plus_one").notNull().default(false),
+    // For a plus-one: the guest bringing them (they name their +1 when they RSVP).
+    plusOneOf: uuid("plus_one_of").references((): AnyPgColumn => guests.id, { onDelete: "cascade" }),
     dietaryRestrictions: text("dietary_restrictions"),
     notes: text("notes"),
     sortOrder: integer("sort_order").notNull().default(0),
     ...timestamps(),
   },
-  (t) => [index("guests_wedding_idx").on(t.weddingId), index("guests_household_idx").on(t.householdId)],
+  (t) => [
+    index("guests_wedding_idx").on(t.weddingId),
+    index("guests_household_idx").on(t.householdId),
+    // One plus-one per guest.
+    uniqueIndex("guests_plus_one_of_uq").on(t.plusOneOf),
+  ],
 );
 
 // Ceremony, reception, rehearsal dinner, brunch, ...

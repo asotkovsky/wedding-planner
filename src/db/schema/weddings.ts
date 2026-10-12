@@ -27,6 +27,9 @@ export const weddings = pgTable("weddings", {
   date: date("date"),
   timezone: text("timezone").notNull().default("America/New_York"),
   currency: text("currency").notNull().default("USD"),
+  // Wedding colors (hex); see src/lib/theme.ts. Null means the default palette.
+  themePrimary: text("theme_primary"),
+  themeAccent: text("theme_accent"),
   totalBudgetCents: integer("total_budget_cents"),
   // Guest-facing page content
   venueName: text("venue_name"),
@@ -36,6 +39,8 @@ export const weddings = pgTable("weddings", {
   accommodationInfo: text("accommodation_info"),
   dressCode: text("dress_code"),
   faq: jsonb("faq").$type<FaqItem[]>().notNull().default([]),
+  // Guests can submit or change their RSVP until the end of this day (wedding timezone).
+  rsvpDeadline: date("rsvp_deadline"),
   createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
   ...timestamps(),
 });

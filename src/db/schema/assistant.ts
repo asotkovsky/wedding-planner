@@ -1,4 +1,4 @@
-import { boolean, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, json, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { id, timestamps } from "./columns";
 import { weddings } from "./weddings";
@@ -12,13 +12,19 @@ export const chats = pgTable(
       .notNull()
       .references(() => weddings.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("New chat"),
+    // Frozen when the chat starts: Claude ties its reasoning to the exact system prompt,
+    // so it must not change for the life of the chat.
+    systemPrompt: text("system_prompt"),
+    // The wedding context the model last saw; changes are appended as system messages.
+    contextSnapshot: text("context_snapshot"),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
     ...timestamps(),
   },
   (t) => [index("chats_wedding_idx").on(t.weddingId)],
 );
 
-// One row per AI SDK UIMessage; `parts` is stored as-is.
+// One row per AI SDK UIMessage. `json` (not `jsonb`) keeps the exact text, including key
+// order: replayed history must be byte-identical for Claude's thinking blocks to stay valid.
 export const chatMessages = pgTable(
   "chat_messages",
   {
@@ -27,8 +33,8 @@ export const chatMessages = pgTable(
       .notNull()
       .references(() => chats.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
-    parts: jsonb("parts").$type<unknown[]>().notNull(),
-    metadata: jsonb("metadata"),
+    parts: json("parts").$type<unknown[]>().notNull(),
+    metadata: json("metadata"),
     userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

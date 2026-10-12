@@ -7,7 +7,7 @@ type Executor = Pick<typeof db, "insert">;
 export async function logActivity(
   entry: {
     weddingId: string;
-    actorUserId: string;
+    actorUserId: string | null;
     action: "create" | "update" | "delete";
     entityType: string;
     entityId?: string;
