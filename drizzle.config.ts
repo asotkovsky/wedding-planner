@@ -1,5 +1,6 @@
 import { loadEnvConfig } from "@next/env";
 import { defineConfig } from "drizzle-kit";
+import { databaseSsl } from "./src/db/ssl";
 
 loadEnvConfig(process.cwd());
 
@@ -9,7 +10,7 @@ export default defineConfig({
   out: "./drizzle",
   dbCredentials: {
     url: process.env.DATABASE_URL!,
-    ssl: process.env.DATABASE_SSL === "true" ? "require" : false,
+    ssl: databaseSsl(),
   },
   strict: true,
 });
