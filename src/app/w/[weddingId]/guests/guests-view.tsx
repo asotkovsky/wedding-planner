@@ -1,7 +1,11 @@
 "use client";
 
 import {
+  BellRing,
   ChevronRight,
+  Download,
+  FileUp,
+  Share2,
   ChevronsDownUp,
   ChevronsUpDown,
   Copy,
@@ -43,6 +47,7 @@ import { cn } from "@/lib/utils";
 import type { RsvpStatus } from "@/db/schema";
 import type { HouseholdWithGuests } from "@/server/guests";
 import * as actions from "./actions";
+import { ImportGuestsDialog } from "./import-guests-dialog";
 
 type Event = { id: string; name: string; mealOptions: string[] };
 type Guest = HouseholdWithGuests["guests"][number];
@@ -61,13 +66,6 @@ function sideLabel(side: Guest["side"], partners: [string, string]) {
   if (side === "both") return "Both sides";
   return null;
 }
-
-const SIDE_TONE: Record<NonNullable<Guest["side"]> | "none", string> = {
-  partner1: "bg-rose-soft text-rose",
-  partner2: "bg-sky-soft text-sky",
-  both: "bg-lilac-soft text-lilac",
-  none: "bg-muted text-muted-foreground",
-};
 
 function initials(g: Guest) {
   if (!g.firstName) return "+1";
@@ -88,11 +86,16 @@ export function GuestsView({
 }: Ctx & { households: HouseholdWithGuests[]; guestPageBase: string }) {
   const ctx: Ctx = { weddingId, events, partnerNames, editable };
   const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<GuestStatus | "all">("all");
+  const [side, setSide] = useState<"all" | "partner1" | "partner2" | "both">("all");
+  // Picking an event card narrows the status filters and counts to that event.
+  const [eventId, setEventId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  // Households start collapsed; while searching, every match is shown expanded.
+  const [importing, setImporting] = useState(false);
+  // Households start collapsed. Searching or filtering opens the matches; each can still be collapsed.
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const searching = query.trim().length > 0;
-  const allExpanded = households.length > 0 && households.every((h) => expanded.has(h.id));
+  const filtering = status !== "all" || side !== "all" || eventId !== null;
+  const searching = query.trim().length > 0 || filtering;
   const toggle = (id: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -104,11 +107,45 @@ export function GuestsView({
   const allGuests = households.flatMap((h) => h.guests);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return households;
-    return households.filter(
-      (h) => h.name.toLowerCase().includes(q) || h.guests.some((g) => guestName(g).toLowerCase().includes(q)),
-    );
-  }, [households, query]);
+    const matchesGuest = (g: Guest) => {
+      const s = guestStatus(g, eventId);
+      return (eventId === null || s !== null) && (status === "all" || s === status) && (side === "all" || g.side === side);
+    };
+    return households.filter((h) => {
+      if (q && !h.name.toLowerCase().includes(q) && !h.guests.some((g) => guestName(g).toLowerCase().includes(q))) {
+        return false;
+      }
+      return filtering ? h.guests.some(matchesGuest) : true;
+    });
+  }, [households, query, status, side, eventId, filtering]);
+  const allExpanded = filtered.length > 0 && filtered.every((h) => expanded.has(h.id));
+
+  // When the search or filters change, open what matches (or collapse everything once they're cleared).
+  const filterKey = `${query.trim()}|${status}|${side}|${eventId}`;
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (filterKey !== lastFilterKey) {
+    setLastFilterKey(filterKey);
+    setExpanded(new Set(searching ? filtered.map((h) => h.id) : []));
+  }
+
+  const countGuests = (s: GuestStatus) => allGuests.filter((g) => guestStatus(g, eventId) === s).length;
+  const statusCounts = {
+    all: eventId ? allGuests.filter((g) => guestStatus(g, eventId) !== null).length : allGuests.length,
+    coming: countGuests("coming"),
+    waiting: countGuests("waiting"),
+    out: countGuests("out"),
+  };
+
+  /** Households with anyone still to reply, with their guest-page links, ready to paste into texts or emails. */
+  async function copyReminderList() {
+    const waiting = households.filter((h) => h.guests.some((g) => guestStatus(g) === "waiting"));
+    if (!waiting.length) {
+      toast.success("Everyone has replied! 🎉");
+      return;
+    }
+    await navigator.clipboard.writeText(waiting.map((h) => `${h.name}: ${guestPageBase}${h.inviteToken}`).join("\n"));
+    toast.success(`Copied ${waiting.length} household${waiting.length === 1 ? "" : "s"} still to reply, with their links`);
+  }
 
   const children = allGuests.filter((g) => g.ageGroup !== "adult").length;
 
@@ -118,10 +155,42 @@ export function GuestsView({
         section="guests"
         description={
           households.length
-            ? `${allGuests.length} guests in ${households.length} household${households.length === 1 ? "" : "s"}${children ? ` · ${children} little one${children === 1 ? "" : "s"}` : ""}`
+            ? `${allGuests.length} guest${allGuests.length === 1 ? "" : "s"} in ${households.length} household${households.length === 1 ? "" : "s"}${children ? ` · ${children} little one${children === 1 ? "" : "s"}` : ""}`
             : undefined
         }
       >
+        {households.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Share2 /> Share & export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem onSelect={copyReminderList}>
+                <BellRing />
+                <span>
+                  Copy reminder list
+                  <span className="block text-xs text-muted-foreground">Who hasn&apos;t replied, with their links</span>
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href={`/w/${weddingId}/guests/export`} download>
+                  <Download />
+                  <span>
+                    Export guest list
+                    <span className="block text-xs text-muted-foreground">CSV for your caterer or a spreadsheet</span>
+                  </span>
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {editable && households.length > 0 && (
+          <Button variant="outline" onClick={() => setImporting(true)}>
+            <FileUp /> Import
+          </Button>
+        )}
         {editable && (
           <Button onClick={() => setCreating(true)}>
             <Plus /> Add household
@@ -134,8 +203,19 @@ export function GuestsView({
           {events.map((e) => {
             const invites = allGuests.flatMap((g) => g.invites.filter((i) => i.subEventId === e.id));
             const count = (s: RsvpStatus) => invites.filter((i) => i.status === s).length;
+            const selected = eventId === e.id;
             return (
-              <div key={e.id} className="space-y-2 rounded-2xl border bg-card p-4">
+              <button
+                key={e.id}
+                type="button"
+                aria-pressed={selected}
+                title={selected ? "Show all events" : `Filter guests by ${e.name}`}
+                onClick={() => setEventId(selected ? null : e.id)}
+                className={cn(
+                  "space-y-2 rounded-2xl border bg-card p-4 text-left transition-colors hover:bg-muted/50",
+                  selected && "border-foreground ring-1 ring-foreground",
+                )}
+              >
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="font-display font-bold">{e.name}</span>
                   <span className="text-sm text-muted-foreground tabular-nums">
@@ -149,7 +229,7 @@ export function GuestsView({
                 <p className="text-xs text-muted-foreground">
                   {count("declined")} can&apos;t make it · {count("pending")} waiting
                 </p>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -160,28 +240,56 @@ export function GuestsView({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-0 flex-1 sm:max-w-sm">
-          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search guests"
-            className="h-9 pl-8"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search guests"
-          />
+      {households.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-0 flex-1 sm:max-w-sm">
+            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search guests"
+              className="h-9 pl-8"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search guests"
+            />
+          </div>
+          <div className="flex w-full flex-wrap gap-1.5 sm:order-last">
+            <FilterChip active={status === "all"} onClick={() => setStatus("all")}>
+              {eventId ? `Everyone at ${events.find((e) => e.id === eventId)?.name}` : "All"} · {statusCounts.all}
+            </FilterChip>
+            <FilterChip active={status === "coming"} dot="bg-yes" onClick={() => setStatus("coming")}>
+              Coming · {statusCounts.coming}
+            </FilterChip>
+            <FilterChip active={status === "waiting"} dot="bg-maybe" onClick={() => setStatus("waiting")}>
+              Waiting · {statusCounts.waiting}
+            </FilterChip>
+            <FilterChip active={status === "out"} dot="bg-no" onClick={() => setStatus("out")}>
+              Can&apos;t make it · {statusCounts.out}
+            </FilterChip>
+            <span className="mx-1 hidden w-px bg-border sm:block" aria-hidden />
+            {(
+              [
+                ["all", "Both sides"],
+                ["partner1", `${partnerNames[0]}'s side`],
+                ["partner2", `${partnerNames[1]}'s side`],
+              ] as const
+            ).map(([value, label]) => (
+              <FilterChip key={value} active={side === value} onClick={() => setSide(value)}>
+                {label}
+              </FilterChip>
+            ))}
+          </div>
+          {filtered.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setExpanded(allExpanded ? new Set() : new Set(filtered.map((h) => h.id)))}
+            >
+              {allExpanded ? <ChevronsDownUp /> : <ChevronsUpDown />}
+              {allExpanded ? "Collapse all" : "Expand all"}
+            </Button>
+          )}
         </div>
-        {households.length > 0 && !searching && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setExpanded(allExpanded ? new Set() : new Set(households.map((h) => h.id)))}
-          >
-            {allExpanded ? <ChevronsDownUp /> : <ChevronsUpDown />}
-            {allExpanded ? "Collapse all" : "Expand all"}
-          </Button>
-        )}
-      </div>
+      )}
 
       <div className="space-y-2.5">
         {filtered.map((h) => (
@@ -190,7 +298,8 @@ export function GuestsView({
             ctx={ctx}
             household={h}
             link={guestPageBase + h.inviteToken}
-            expanded={searching || expanded.has(h.id)}
+            eventId={eventId}
+            expanded={expanded.has(h.id)}
             onToggle={() => toggle(h.id)}
           />
         ))}
@@ -206,6 +315,9 @@ export function GuestsView({
                 <Button onClick={() => setCreating(true)}>
                   <Plus /> Add household
                 </Button>
+                <Button variant="outline" onClick={() => setImporting(true)}>
+                  <FileUp /> Import a list or CSV
+                </Button>
                 <OpenAssistantButton variant="outline" prompt="I'd like to add some guests.">
                   Add with your planner
                 </OpenAssistantButton>
@@ -214,11 +326,21 @@ export function GuestsView({
           </EmptyState>
         )}
         {households.length > 0 && filtered.length === 0 && (
-          <p className="py-8 text-center text-muted-foreground">No one matches &ldquo;{query}&rdquo;.</p>
+          <p className="py-8 text-center text-muted-foreground">
+            No one matches{query.trim() ? <> &ldquo;{query}&rdquo;</> : " these filters"}.
+          </p>
         )}
       </div>
 
       {creating && <HouseholdDialog ctx={ctx} onClose={() => setCreating(false)} />}
+      {importing && (
+        <ImportGuestsDialog
+          weddingId={weddingId}
+          events={events}
+          partnerNames={partnerNames}
+          onClose={() => setImporting(false)}
+        />
+      )}
     </div>
   );
 }
@@ -227,12 +349,15 @@ function HouseholdCard({
   ctx,
   household,
   link,
+  eventId,
   expanded,
   onToggle,
 }: {
   ctx: Ctx;
   household: HouseholdWithGuests;
   link: string;
+  /** The event picked on the page, if any; the summary then counts replies for that event only. */
+  eventId: string | null;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -270,7 +395,7 @@ function HouseholdCard({
                 </span>
               )}
             </div>
-            <HouseholdSummary household={household} />
+            <HouseholdSummary household={household} eventId={eventId} />
           </div>
         </button>
 
@@ -338,6 +463,11 @@ function HouseholdCard({
           <p className="pt-2.5 text-sm text-muted-foreground">
             {[household.email, household.phone, household.city].filter(Boolean).join(" · ") || "No contact info yet"}
           </p>
+          {household.personalNote && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              📝 Your note on their page: <span className="italic">&ldquo;{household.personalNote}&rdquo;</span>
+            </p>
+          )}
           {household.guestMessage && (
             <p className="mt-2 rounded-xl bg-brand-soft px-3 py-2 text-sm">
               💌 <span className="italic">&ldquo;{household.guestMessage}&rdquo;</span>
@@ -370,15 +500,57 @@ function HouseholdCard({
   );
 }
 
+type GuestStatus = "coming" | "waiting" | "out";
+
+/**
+ * A guest's status for one event, or overall across the events they're invited to
+ * (coming to any, out of all, otherwise waiting). Null if they aren't invited.
+ */
+function guestStatus(g: Guest, eventId: string | null = null): GuestStatus | null {
+  const invites = eventId ? g.invites.filter((i) => i.subEventId === eventId) : g.invites;
+  if (!invites.length) return null;
+  if (invites.some((i) => i.status === "attending")) return "coming";
+  if (invites.every((i) => i.status === "declined")) return "out";
+  return "waiting";
+}
+
+function FilterChip({
+  active,
+  dot,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  dot?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-colors aria-pressed:hover:bg-foreground",
+        active ? "border-foreground bg-foreground text-background" : "hover:bg-muted",
+      )}
+    >
+      {dot && <span aria-hidden className={cn("size-2 rounded-full", dot)} />}
+      {children}
+    </button>
+  );
+}
+
 /** "3 guests · 2 coming · 1 waiting", summarizing each guest across the events they're invited to. */
-function HouseholdSummary({ household }: { household: HouseholdWithGuests }) {
+function HouseholdSummary({ household, eventId }: { household: HouseholdWithGuests; eventId: string | null }) {
   let coming = 0;
   let out = 0;
   let waiting = 0;
   for (const g of household.guests) {
-    if (g.invites.some((i) => i.status === "attending")) coming++;
-    else if (g.invites.length && g.invites.every((i) => i.status === "declined")) out++;
-    else if (g.invites.length) waiting++;
+    const s = guestStatus(g, eventId);
+    if (s === "coming") coming++;
+    else if (s === "out") out++;
+    else if (s === "waiting") waiting++;
   }
   const n = household.guests.length;
   return (
@@ -434,10 +606,7 @@ function GuestRow({
       <div className="flex min-w-48 flex-1 items-center gap-3">
         <span
           aria-hidden
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-            SIDE_TONE[guest.side ?? "none"],
-          )}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground"
         >
           {initials(guest)}
         </span>
@@ -605,10 +774,9 @@ function HouseholdDialog({ ctx, household, onClose }: { ctx: Ctx; household?: Ho
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const { name, email, phone, addressLine1, addressLine2, city, region, postalCode, country, notes } = formObject(
-      e.currentTarget,
-    );
-    const fields = { name, email, phone, addressLine1, addressLine2, city, region, postalCode, country, notes };
+    const { name, email, phone, addressLine1, addressLine2, city, region, postalCode, country, notes, personalNote } =
+      formObject(e.currentTarget);
+    const fields = { name, email, phone, addressLine1, addressLine2, city, region, postalCode, country, notes, personalNote };
     const ok = household
       ? await run(() => actions.updateHousehold(ctx.weddingId, household.id, fields), "Household saved")
       : await run(
@@ -745,7 +913,19 @@ function HouseholdDialog({ ctx, household, onClose }: { ctx: Ctx; household?: Ho
             <Field name="region" label="State / province" defaultValue={household?.region ?? ""} />
             <Field name="postalCode" label="Postal code" defaultValue={household?.postalCode ?? ""} />
             <Field name="country" label="Country" defaultValue={household?.country ?? ""} />
-            <TextareaField name="notes" label="Notes" defaultValue={household?.notes ?? ""} className="sm:col-span-2" />
+            <TextareaField
+              name="personalNote"
+              label="Personal note on their guest page"
+              placeholder="e.g. Grandma, we've saved you a seat right up front! 💕"
+              defaultValue={household?.personalNote ?? ""}
+              className="sm:col-span-2"
+            />
+            <TextareaField
+              name="notes"
+              label="Private notes (only your planning crew sees these)"
+              defaultValue={household?.notes ?? ""}
+              className="sm:col-span-2"
+            />
           </section>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>

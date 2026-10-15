@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { db } from "@/db";
 import { households, user, weddingInvites, weddingMembers } from "@/db/schema";
 import { canEdit, requireWeddingAccess } from "@/lib/access";
+import { listPhotos } from "@/server/photos";
 import { ColorsForm } from "./colors-form";
 import { GuestPageForm } from "./guest-page-form";
+import { PhotosForm } from "./photos-form";
 import { InviteForm, InviteList, MemberList, WeddingDetailsForm } from "./forms";
 
 export default async function SettingsPage({ params }: { params: Promise<{ weddingId: string }> }) {
@@ -14,7 +16,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ weddi
   const { wedding, role, user: me } = await requireWeddingAccess(weddingId);
   const isOwner = role === "owner";
 
-  const [members, invites] = await Promise.all([
+  const [members, invites, photos] = await Promise.all([
     db
       .select({ userId: user.id, name: user.name, email: user.email, role: weddingMembers.role })
       .from(weddingMembers)
@@ -33,6 +35,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ weddi
             ),
           )
       : Promise.resolve([]),
+    listPhotos(weddingId),
   ]);
 
   const [preview] = await db
@@ -75,10 +78,21 @@ export default async function SettingsPage({ params }: { params: Promise<{ weddi
               dressCode: wedding.dressCode,
               rsvpDeadline: wedding.rsvpDeadline,
               faq: wedding.faq,
+              registry: wedding.registry,
             }}
             previewHref={preview ? `/i/${preview.token}` : null}
             disabled={!canEdit(role)}
           />
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-2xl" id="photos">
+        <CardHeader>
+          <CardTitle className="font-display text-lg font-bold">Photos</CardTitle>
+          <CardDescription>Show guests a little of your story. The first photo is the cover of your guest page.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PhotosForm weddingId={weddingId} photos={photos} editable={canEdit(role)} />
         </CardContent>
       </Card>
 

@@ -34,7 +34,7 @@ export default async function WeddingLayout({
       <AssistantShell weddingId={wedding.id} canWrite={canEdit(role)}>
         <div className="flex min-h-screen flex-col md:flex-row">
           {/* Desktop sidebar */}
-          <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-5 border-r bg-sidebar p-4 md:flex">
+          <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-5 border-r bg-sidebar p-4 md:flex print:hidden">
             <Link href="/weddings" className="px-1">
               <Logo />
             </Link>
@@ -53,7 +53,7 @@ export default async function WeddingLayout({
           </aside>
 
           {/* Phone top bar */}
-          <header className="sticky top-0 z-20 flex items-center gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur md:hidden">
+          <header className="sticky top-0 z-20 flex items-center gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur md:hidden print:hidden">
             <Link href="/weddings" aria-label="All weddings">
               <LogoMark />
             </Link>

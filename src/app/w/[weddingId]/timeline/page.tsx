@@ -13,6 +13,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ weddi
   return (
     <TimelineView
       weddingId={weddingId}
+      weddingName={wedding.name}
       editable={canEdit(role)}
       defaultDate={wedding.date}
       timezone={tz}

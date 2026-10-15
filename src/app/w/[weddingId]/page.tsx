@@ -1,5 +1,16 @@
 import { and, asc, desc, eq, isNull, ne } from "drizzle-orm";
-import { ArrowRight, CircleDollarSign, ClipboardCheck, Clock, MapPin, Sparkles, UserPlus } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  CircleDollarSign,
+  ClipboardCheck,
+  Clock,
+  MapPin,
+  Minus,
+  Rocket,
+  Sparkles,
+  UserPlus,
+} from "lucide-react";
 import Link from "next/link";
 import { OpenAssistantButton } from "@/components/assistant/open-assistant-button";
 import { IconChip } from "@/components/brand";
@@ -8,7 +19,7 @@ import { StatusPill } from "@/components/status-pill";
 import { Button } from "@/components/ui/button";
 import { vendorIcon } from "@/components/vendor-icons";
 import { db } from "@/db";
-import { activityLog, guests, tasks, user, vendorPayments, vendors } from "@/db/schema";
+import { activityLog, guests, tasks, user, vendorPayments, vendors, weddingMembers } from "@/db/schema";
 import { canEdit } from "@/lib/access";
 import { todayIn } from "@/lib/datetime";
 import { daysUntil, formatDate, formatMoney } from "@/lib/format";
@@ -16,14 +27,23 @@ import { cn } from "@/lib/utils";
 import { getCtx } from "@/server/action";
 import { getBudgetSummary } from "@/server/budget";
 import { listSubEvents } from "@/server/events";
+import { SkipStepButton } from "./skip-step-button";
+import { WelcomeCelebration } from "./welcome";
 
-export default async function OverviewPage({ params }: { params: Promise<{ weddingId: string }> }) {
+export default async function OverviewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ weddingId: string }>;
+  searchParams: Promise<{ welcome?: string }>;
+}) {
+  const { welcome } = await searchParams;
   const { weddingId } = await params;
   const { ctx, wedding, role } = await getCtx(weddingId);
   const today = todayIn(wedding.timezone);
   const base = `/w/${weddingId}`;
 
-  const [guestRows, events, budget, openTasks, duePayments, vendorRows, activity] = await Promise.all([
+  const [guestRows, events, budget, openTasks, duePayments, vendorRows, activity, members] = await Promise.all([
     db.select({ id: guests.id }).from(guests).where(eq(guests.weddingId, weddingId)),
     listSubEvents(ctx),
     getBudgetSummary(ctx),
@@ -64,7 +84,49 @@ export default async function OverviewPage({ params }: { params: Promise<{ weddi
       .where(eq(activityLog.weddingId, weddingId))
       .orderBy(desc(activityLog.createdAt))
       .limit(6),
+    db.select({ userId: weddingMembers.userId }).from(weddingMembers).where(eq(weddingMembers.weddingId, weddingId)),
   ]);
+
+  // Getting-started checklist; disappears once every step is done or skipped.
+  const firstSteps = [
+    {
+      key: "events",
+      label: "Add your events",
+      hint: "Ceremony, reception, brunch…",
+      href: "/events",
+      done: events.length > 0,
+    },
+    {
+      key: "guests",
+      label: "Start the guest list",
+      hint: "Households and RSVPs",
+      href: "/guests",
+      done: guestRows.length > 0,
+    },
+    {
+      key: "budget",
+      label: "Set your budget",
+      hint: "A total to plan against",
+      href: "/budget",
+      done: budget.totalBudgetCents != null,
+    },
+    {
+      key: "guest-page",
+      label: "Write your guest page",
+      hint: "Welcome note, travel, FAQ",
+      href: "/settings#guest-page",
+      done: Boolean(wedding.welcomeMessage),
+    },
+    {
+      key: "crew",
+      label: "Invite your planning crew",
+      hint: "Partner, planner, family",
+      href: "/settings",
+      done: members.length > 1,
+    },
+  ].map((s) => ({ ...s, skipped: !s.done && wedding.skippedSteps.includes(s.key) }));
+  const stepsDone = firstSteps.filter((s) => s.done).length;
+  const stepsLeft = firstSteps.filter((s) => !s.done && !s.skipped).length;
 
   const days = wedding.date ? daysUntil(wedding.date) : null;
   const money = (c: number) => formatMoney(c, wedding.currency);
@@ -72,7 +134,13 @@ export default async function OverviewPage({ params }: { params: Promise<{ weddi
 
   // Merge tasks and payments into one "Up next" list, soonest first.
   const upNext = [
-    ...openTasks.map((t) => ({ kind: "task" as const, id: t.id, title: t.title, detail: null as string | null, due: t.dueDate })),
+    ...openTasks.map((t) => ({
+      kind: "task" as const,
+      id: t.id,
+      title: t.title,
+      detail: null as string | null,
+      due: t.dueDate,
+    })),
     ...duePayments.map((p) => ({
       kind: "payment" as const,
       id: p.id,
@@ -86,6 +154,8 @@ export default async function OverviewPage({ params }: { params: Promise<{ weddi
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
+      {welcome && <WelcomeCelebration names={wedding.name} joined={welcome === "joined"} />}
+
       {/* Hero */}
       <section className="relative overflow-hidden rounded-3xl bg-brand-soft p-6 sticker md:p-8">
         <div className="pointer-events-none absolute inset-0 bg-dots opacity-60 mask-[linear-gradient(to_left,black,transparent_70%)]" />
@@ -135,6 +205,61 @@ export default async function OverviewPage({ params }: { params: Promise<{ weddi
         </div>
       </section>
 
+      {canEdit(role) && stepsLeft > 0 && (
+        <section className="rounded-2xl border-2 border-dashed border-brand/60 bg-card p-5">
+          <header className="mb-4 flex flex-wrap items-center gap-2.5">
+            <IconChip icon={Rocket} tone="brand" size="sm" />
+            <h2 className="flex-1 text-lg font-bold">First steps</h2>
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {stepsDone} of {firstSteps.length} done
+            </span>
+          </header>
+          <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {firstSteps.map((s) => (
+              <li key={s.key} className="relative">
+                <Link
+                  href={`${base}${s.href}`}
+                  className={cn(
+                    "flex h-full items-start gap-2.5 rounded-xl border p-3 transition-colors hover:border-foreground",
+                    s.done && "bg-yes-soft/50",
+                    s.skipped && "border-dashed opacity-60",
+                    !s.done && "pb-8",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2",
+                      s.done ? "border-yes bg-yes text-white" : "border-input text-muted-foreground",
+                    )}
+                    aria-hidden
+                  >
+                    {s.done && <Check className="size-3" strokeWidth={3} />}
+                    {s.skipped && <Minus className="size-3" strokeWidth={3} />}
+                  </span>
+                  <span className="min-w-0">
+                    <span
+                      className={cn(
+                        "block text-sm font-semibold",
+                        (s.done || s.skipped) && "text-muted-foreground line-through",
+                      )}
+                    >
+                      {s.label}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">{s.skipped ? "Skipped" : s.hint}</span>
+                  </span>
+                </Link>
+                <span className="sr-only">{s.done ? "Done" : s.skipped ? "Skipped" : "Not done yet"}</span>
+                {!s.done && (
+                  <div className="absolute right-2 bottom-2">
+                    <SkipStepButton weddingId={wedding.id} step={s.key} skipped={s.skipped} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* RSVPs */}
         <Card href={`${base}/guests`} section="guests" title="RSVPs" className="lg:col-span-2">
@@ -145,7 +270,8 @@ export default async function OverviewPage({ params }: { params: Promise<{ weddi
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                <span className="font-display text-2xl font-bold text-foreground">{guestRows.length}</span> guests invited
+                <span className="font-display text-2xl font-bold text-foreground">{guestRows.length}</span> guests
+                invited
               </p>
               {events.map((e) => {
                 const pending = Math.max(e.invited - e.attending - e.declined, 0);
@@ -187,7 +313,9 @@ export default async function OverviewPage({ params }: { params: Promise<{ weddi
                     "h-full rounded-full",
                     budget.committedCents > budget.totalBudgetCents ? "bg-late" : "bg-mint",
                   )}
-                  style={{ width: `${Math.min(100, (budget.committedCents / budget.totalBudgetCents) * 100)}%` }}
+                  style={{
+                    width: `${Math.min(100, (budget.committedCents / budget.totalBudgetCents) * 100)}%`,
+                  }}
                 />
               </div>
               <p className="text-sm text-muted-foreground">
@@ -227,7 +355,10 @@ export default async function OverviewPage({ params }: { params: Promise<{ weddi
                     {item.due ? (
                       <StatusPill status={overdue ? "late" : "maybe"} icon={overdue}>
                         {overdue ? "Overdue · " : ""}
-                        {formatDate(item.due, { month: "short", day: "numeric" })}
+                        {formatDate(item.due, {
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </StatusPill>
                     ) : (
                       <span className="text-xs text-muted-foreground">No date</span>

@@ -1,0 +1,1 @@
+ALTER TABLE "weddings" ADD COLUMN "skipped_steps" jsonb DEFAULT '[]'::jsonb NOT NULL;

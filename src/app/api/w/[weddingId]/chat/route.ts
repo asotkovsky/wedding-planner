@@ -1,7 +1,8 @@
-import { createAnthropic, type AnthropicLanguageModelOptions } from "@ai-sdk/anthropic";
+import type { AnthropicLanguageModelOptions } from "@ai-sdk/anthropic";
 import {
   convertToModelMessages,
   createIdGenerator,
+  isToolUIPart,
   stepCountIs,
   streamText,
   validateUIMessages,
@@ -13,6 +14,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { user as userTable, weddingMembers } from "@/db/schema";
 import { canEdit, requireWeddingAccess } from "@/lib/access";
+import { aiErrorMessage, anthropic, MODEL } from "@/server/ai";
 import { createChat, loadChat, saveMessages, updateChatContext } from "@/server/assistant/chats";
 import { buildContext, buildSystemPrompt } from "@/server/assistant/prompt";
 import { buildTools, toolApproval } from "@/server/assistant/tools";
@@ -22,14 +24,6 @@ export const maxDuration = 300;
 
 const generateMessageId = createIdGenerator({ prefix: "msg", size: 16 });
 
-const MODEL = "claude-opus-5-5";
-
-// API keys that aren't scoped to a workspace must name one on every request.
-const anthropic = createAnthropic({
-  headers: process.env.ANTHROPIC_WORKSPACE_ID
-    ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID }
-    : undefined,
-});
 
 const bodySchema = z.object({
   chatId: z.uuid(),
@@ -66,6 +60,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ wedding
   if (incoming.role === "user") messages = [...history, incoming];
   else if (history.at(-1)?.id === incoming.id) messages = [...history.slice(0, -1), incoming];
   else return Response.json({ error: "Out-of-date conversation; reload the page" }, { status: 409 });
+
+  // A reply cut off by an error or Stop can leave tool calls that never ran. Claude rejects a
+  // call without a result, so leave those out or the chat could never continue.
+  messages = messages.map((m) =>
+    m.role === "assistant"
+      ? { ...m, parts: m.parts.filter((p) => !(isToolUIPart(p) && (p.state === "input-streaming" || p.state === "input-available"))) }
+      : m,
+  );
 
   // Index of the first message this turn may change (and so must be saved).
   const changedFrom = incoming.role === "user" ? history.length : history.length - 1;
@@ -162,7 +164,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ wedding
     },
     onError: (error) => {
       console.error("Assistant error", error);
-      return "Sorry, something went wrong talking to the assistant. Please try again.";
+      return aiErrorMessage(error, "Sorry, something went wrong talking to the assistant. Please try again.");
     },
   });
 }

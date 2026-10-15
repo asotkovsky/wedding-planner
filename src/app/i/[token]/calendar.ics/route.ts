@@ -1,13 +1,16 @@
 import { getGuestPage } from "@/server/guest-page";
 
-// "Add to calendar": an iCalendar file with the events this household is invited to.
-export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
+// "Add to calendar": an iCalendar file with the events this household is invited to,
+// or just one of them with ?event=<id>.
+export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const page = await getGuestPage(token);
   if (!page) return new Response("Not found", { status: 404 });
 
   const stamp = icsDate(new Date());
-  const events = page.events.filter((e) => e.startsAt);
+  const only = new URL(req.url).searchParams.get("event");
+  const events = page.events.filter((e) => e.startsAt && (!only || e.id === only));
+  if (!events.length) return new Response("Not found", { status: 404 });
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -33,7 +36,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   return new Response(lines.join("\r\n") + "\r\n", {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${slug(page.wedding.name)}.ics"`,
+      "Content-Disposition": `attachment; filename="${slug(only ? `${page.wedding.name} ${events[0].name}` : page.wedding.name)}.ics"`,
       "Cache-Control": "private, no-store",
     },
   });

@@ -49,7 +49,7 @@ function AssistantLauncher({ onOpen }: { onOpen: () => void }) {
       onClick={onOpen}
       aria-label="Ask your planner"
       className={cn(
-        "group fixed right-6 bottom-6 z-30 hidden h-12 rounded-full px-3.5 transition-[translate,opacity] duration-300 md:inline-flex",
+        "group fixed right-6 bottom-6 z-30 hidden h-12 rounded-full px-3.5 transition-[translate,opacity] duration-300 md:inline-flex print:hidden",
         hidden && "pointer-events-none translate-y-24 opacity-0",
       )}
     >
@@ -64,7 +64,7 @@ function AssistantLauncher({ onOpen }: { onOpen: () => void }) {
 /** The page content area; makes room for the panel on wide screens. */
 export function AssistantMain({ children }: { children: React.ReactNode }) {
   const { open } = useAssistant();
-  return <main className={cn("min-w-0 flex-1 p-4 pb-28 transition-[margin] md:p-8", open && "lg:mr-[440px]")}>{children}</main>;
+  return <main className={cn("min-w-0 flex-1 p-4 pb-28 transition-[margin] md:p-8 print:m-0 print:p-0", open && "lg:mr-[440px]")}>{children}</main>;
 }
 
 export function useAssistant() {
@@ -162,7 +162,7 @@ export function AssistantShell({
         aria-hidden={!open}
         inert={!open}
         className={cn(
-          "fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l bg-background shadow-xl transition-transform sm:w-[440px]",
+          "fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l bg-background shadow-xl transition-transform sm:w-[440px] print:hidden",
           open ? "translate-x-0" : "translate-x-full",
         )}
       >

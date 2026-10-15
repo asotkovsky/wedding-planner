@@ -1,15 +1,24 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { UsersRound } from "lucide-react";
+import Link from "next/link";
+import { IconChip, Logo } from "@/components/brand";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
 import { weddingInvites, weddingMembers, weddings } from "@/db/schema";
 import { requireUser } from "@/lib/access";
 import { logActivity } from "@/lib/activity";
+import { themeVars } from "@/lib/theme";
 
 async function findInvite(token: string) {
   const [row] = await db
-    .select({ invite: weddingInvites, weddingName: weddings.name })
+    .select({
+      invite: weddingInvites,
+      weddingName: weddings.name,
+      themePrimary: weddings.themePrimary,
+      themeAccent: weddings.themeAccent,
+    })
     .from(weddingInvites)
     .innerJoin(weddings, eq(weddings.id, weddingInvites.weddingId))
     .where(
@@ -59,22 +68,35 @@ export default async function AcceptInvitePage({ params }: { params: Promise<{ t
         tx,
       );
     });
-    redirect(`/w/${invite.weddingId}`);
+    redirect(`/w/${invite.weddingId}?welcome=joined`);
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Join {row.weddingName}</CardTitle>
-          <CardDescription>You&apos;ve been invited as {row.invite.role === "viewer" ? "a viewer" : `an ${row.invite.role}`}.</CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <form action={accept}>
-            <Button type="submit">Accept invite</Button>
-          </form>
-        </CardFooter>
-      </Card>
+    <main
+      style={themeVars(row.themePrimary, row.themeAccent)}
+      className="relative flex min-h-screen flex-col items-center justify-center gap-8 bg-brand-soft p-4"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-dots opacity-50" />
+      <Link href="/weddings" className="relative">
+        <Logo />
+      </Link>
+      <div className="relative w-full max-w-md space-y-5 rounded-3xl bg-background p-8 text-center sticker">
+        <IconChip icon={UsersRound} tone="brand" size="lg" sticker className="mx-auto -rotate-6" />
+        <div className="space-y-2">
+          <p className="text-sm font-semibold tracking-wide text-brand-ink uppercase">You&apos;re invited</p>
+          <h1 className="text-3xl font-extrabold">Join {row.weddingName}&apos;s planning crew</h1>
+          <p className="text-muted-foreground">
+            {row.invite.role === "viewer"
+              ? "You'll be able to see the guest list, vendors, budget and timeline."
+              : "You'll be able to help with the guest list, vendors, budget and timeline."}
+          </p>
+        </div>
+        <form action={accept}>
+          <Button type="submit" className="h-11 w-full text-base">
+            Join the crew 🥂
+          </Button>
+        </form>
+      </div>
     </main>
   );
 }

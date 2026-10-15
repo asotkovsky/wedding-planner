@@ -51,7 +51,8 @@ const householdFields = {
   region: z.string().nullish().describe("State / province"),
   postalCode: z.string().nullish(),
   country: z.string().nullish(),
-  notes: z.string().nullish(),
+  notes: z.string().nullish().describe("Private notes for the couple and their crew"),
+  personalNote: z.string().nullish().describe("A note from the couple shown to this household on their guest page"),
 };
 
 const eventFields = {
@@ -369,6 +370,42 @@ export function buildTools(ctx: Ctx, { canWrite }: { canWrite: boolean }) {
         write((r) => `RSVP for ${r.event}: ${r.status}`, () => guests.setRsvp(ctx, { ...input, subEventId: eventId })),
     }),
 
+    set_rsvps: tool({
+      description:
+        "Record RSVPs for several guests or events in one call. Use this instead of calling set_rsvp repeatedly. Each guest must be invited to that event.",
+      inputSchema: z.object({
+        rsvps: z
+          .array(
+            z.object({
+              guestId: id("Guest"),
+              eventId: id("Event"),
+              status: rsvpStatus,
+              mealChoice: z.string().nullish().describe("Must be one of the event's meal options, if it has any"),
+            }),
+          )
+          .min(1),
+      }),
+      execute: ({ rsvps }) =>
+        write(
+          (r) =>
+            `Recorded ${r.saved} RSVP${r.saved === 1 ? "" : "s"}${r.failed.length ? ` (${r.failed.length} couldn't be saved)` : ""}`,
+          async () => {
+            let saved = 0;
+            const failed: { guestId: string; eventId: string; error: string }[] = [];
+            for (const { eventId, ...input } of rsvps) {
+              try {
+                await guests.setRsvp(ctx, { ...input, subEventId: eventId });
+                saved++;
+              } catch (e) {
+                if (!(e instanceof UserError || e instanceof z.ZodError)) throw e;
+                failed.push({ guestId: input.guestId, eventId, error: e.message });
+              }
+            }
+            return { saved, failed };
+          },
+        ),
+    }),
+
     set_invitations: tool({
       description:
         "Invite or uninvite guests to an event. Uninviting deletes their RSVP for that event and requires the user's approval.",
@@ -521,7 +558,7 @@ export function buildTools(ctx: Ctx, { canWrite }: { canWrite: boolean }) {
     // ---- Guest page ----
     update_guest_page: tool({
       description:
-        "Update the guests' invitation page. Only the fields you pass change. faq replaces the whole list, so call get_guest_page first and include existing questions you want to keep.",
+        "Update the guests' invitation page. Only the fields you pass change. faq and registry replace the whole list, so call get_guest_page first and include existing items you want to keep.",
       inputSchema: z.object({
         welcomeMessage: z.string().nullish(),
         dressCode: z.string().nullish(),
@@ -529,6 +566,10 @@ export function buildTools(ctx: Ctx, { canWrite }: { canWrite: boolean }) {
         accommodationInfo: z.string().nullish().describe("Where to stay: hotel blocks, booking codes"),
         rsvpDeadline: date.nullish().describe("Last day guests can RSVP"),
         faq: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
+        registry: z
+          .array(z.object({ label: z.string().describe("e.g. 'Zola', 'Honeymoon fund'"), url: z.string() }))
+          .optional()
+          .describe("Replaces the whole list of registry links"),
       }),
       execute: (input) =>
         write((r) => `Updated the guest page (${r.updated.join(", ")})`, () => guestPage.updateGuestPageContent(ctx, input)),

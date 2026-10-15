@@ -72,5 +72,10 @@ export function themeVars(primary?: string | null, accent?: string | null): CSSP
     "--brand-ink": inkOf(p),
     "--pop": a,
     "--pop-foreground": readableOn(a),
+    // Tokens that derive from --brand are resolved where they're declared (:root), so a themed
+    // wrapper has to restate them for buttons and focus rings inside it to pick up the colors.
+    "--primary": p,
+    "--primary-foreground": readableOn(p),
+    "--ring": p,
   } as CSSProperties;
 }

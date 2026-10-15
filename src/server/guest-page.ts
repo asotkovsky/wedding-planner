@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/activity";
 import { todayIn } from "@/lib/datetime";
 import { log, optDate, optText, UserError, type Ctx } from "./core";
 import { withPlusOnesAfterHosts } from "./guests";
+import { listPhotos } from "./photos";
 
 // ============ Public: the household's guest page ============
 //
@@ -40,7 +41,7 @@ export async function getGuestPage(token: string) {
         .where(inArray(subEventInvites.guestId, guestRows.map((g) => g.id)))
     : [];
   const eventIds = [...new Set(invites.map((i) => i.subEventId))];
-  const [eventRows, timeline] = await Promise.all([
+  const [eventRows, timeline, photos] = await Promise.all([
     eventIds.length
       ? db
           .select()
@@ -62,6 +63,7 @@ export async function getGuestPage(token: string) {
         ),
       )
       .orderBy(asc(timelineItems.startsAt)),
+    listPhotos(wedding.id),
   ]);
 
   const eventOrder = new Map(eventRows.map((e, i) => [e.id, i]));
@@ -80,16 +82,20 @@ export async function getGuestPage(token: string) {
       accommodationInfo: wedding.accommodationInfo,
       dressCode: wedding.dressCode,
       faq: wedding.faq,
+      registry: wedding.registry,
       rsvpDeadline: wedding.rsvpDeadline,
       themePrimary: wedding.themePrimary,
       themeAccent: wedding.themeAccent,
       rsvpOpen: isRsvpOpen(wedding),
     },
+    // Cover first.
+    photos,
     household: {
       name: household.name,
       email: household.email,
       rsvpSubmittedAt: household.rsvpSubmittedAt,
       guestMessage: household.guestMessage,
+      personalNote: household.personalNote,
     },
     guests: withPlusOnesAfterHosts(guestRows).map((g) => ({
       id: g.id,
@@ -252,6 +258,15 @@ function guestLabel(guest: { firstName: string | null }, input: { firstName?: st
 
 // ============ Planner: editing the guest page content ============
 
+/** A registry link: web addresses only, with https:// added when it was left off ("amazon.com/wedding"). */
+const registryLink = z.object({
+  label: z.string().trim().min(1, "Give each registry a name").max(100),
+  url: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() && !/^[a-z][a-z0-9+.-]*:/i.test(v.trim()) ? `https://${v.trim()}` : v),
+    z.url({ protocol: /^https?$/, message: "Registry links must be web addresses" }),
+  ),
+});
+
 export const guestPageContentInput = z
   .object({
     welcomeMessage: optText(4000),
@@ -263,6 +278,7 @@ export const guestPageContentInput = z
       .array(z.object({ question: z.string().trim().min(1).max(300), answer: z.string().trim().min(1).max(2000) }))
       .max(40)
       .optional(),
+    registry: z.array(registryLink).max(10).optional(),
   })
   .partial();
 export type GuestPageContentInput = z.input<typeof guestPageContentInput>;
@@ -276,6 +292,7 @@ export async function getGuestPageContent(ctx: Ctx) {
       dressCode: weddings.dressCode,
       rsvpDeadline: weddings.rsvpDeadline,
       faq: weddings.faq,
+      registry: weddings.registry,
     })
     .from(weddings)
     .where(eq(weddings.id, ctx.weddingId));

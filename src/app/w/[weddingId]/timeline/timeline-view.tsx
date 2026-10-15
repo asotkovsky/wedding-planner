@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, Eye, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Eye, MapPin, Pencil, Plus, Printer, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { OpenAssistantButton } from "@/components/assistant/open-assistant-button";
 import { ConfirmButton } from "@/components/confirm-button";
@@ -30,6 +30,7 @@ type Item = {
 };
 type Props = {
   weddingId: string;
+  weddingName: string;
   editable: boolean;
   defaultDate: string | null;
   timezone: string;
@@ -39,7 +40,7 @@ type Props = {
 };
 
 export function TimelineView(props: Props) {
-  const { weddingId, editable, events, vendors, items, timezone } = props;
+  const { weddingId, weddingName, editable, events, vendors, items, timezone } = props;
   const { run } = useAction();
   const [dialog, setDialog] = useState<Item | "new" | null>(null);
   const days = Map.groupBy(items, (i) => i.day);
@@ -47,20 +48,32 @@ export function TimelineView(props: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader section="timeline" description={`The run of show for you, your crew and your vendors. Times in ${timezone}.`}>
-        {editable && (
-          <Button onClick={() => setDialog("new")}>
-            <Plus /> Add item
-          </Button>
-        )}
-      </PageHeader>
+      {/* Print shows a plain run of show with the wedding's name instead of the app header. */}
+      <div className="hidden print:block">
+        <h1 className="text-2xl font-bold">{weddingName} · Day-of timeline</h1>
+        <p className="text-sm text-muted-foreground">Times in {timezone}</p>
+      </div>
+      <div className="print:hidden">
+        <PageHeader section="timeline" description={`The run of show for you, your crew and your vendors. Times in ${timezone}.`}>
+          {items.length > 0 && (
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer /> Print
+            </Button>
+          )}
+          {editable && (
+            <Button onClick={() => setDialog("new")}>
+              <Plus /> Add item
+            </Button>
+          )}
+        </PageHeader>
+      </div>
 
       {[...days].map(([day, list]) => (
-        <section key={day} className="space-y-2">
+        <section key={day} className="space-y-2 break-inside-avoid-page">
           <h2 className="text-lg font-bold">{day}</h2>
           <ol className="relative ml-1 space-y-1 border-l-2 border-dashed border-brand/50 pl-6">
             {list.map((i) => (
-              <li key={i.id} className="relative flex flex-wrap items-start gap-x-3 gap-y-0.5 rounded-md py-2 pr-2 sm:flex-nowrap">
+              <li key={i.id} className="relative flex break-inside-avoid flex-wrap items-start gap-x-3 gap-y-0.5 rounded-md py-2 pr-2 sm:flex-nowrap">
                 <span className="absolute top-3 -left-[33px] size-4 rounded-full bg-brand sticker-sm" />
                 <div className="w-full shrink-0 font-display text-sm font-bold tabular-nums sm:w-36">{i.time}</div>
                 <div className="min-w-0 flex-1">
@@ -84,7 +97,7 @@ export function TimelineView(props: Props) {
                   {i.description && <p className="mt-1 text-sm text-muted-foreground">{i.description}</p>}
                 </div>
                 {editable && (
-                  <div className="flex">
+                  <div className="flex print:hidden">
                     <Button variant="ghost" size="icon-sm" aria-label="Edit item" onClick={() => setDialog(i)}>
                       <Pencil />
                     </Button>

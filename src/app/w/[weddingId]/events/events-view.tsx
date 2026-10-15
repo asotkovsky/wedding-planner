@@ -12,6 +12,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formObject, useAction } from "@/components/use-action";
+import type { MealSummary } from "@/server/events";
 import * as actions from "./actions";
 
 type EventRow = {
@@ -29,6 +30,7 @@ type EventRow = {
   invited: number;
   attending: number;
   declined: number;
+  meals: MealSummary;
 };
 
 const SUGGESTIONS = ["Welcome drinks", "Rehearsal dinner", "Ceremony", "Cocktail hour", "Reception", "Farewell brunch"];
@@ -110,13 +112,40 @@ export function EventsView({
               )}
               {e.description && <p className="text-muted-foreground">{e.description}</p>}
               {e.mealOptions.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {e.mealOptions.map((m) => (
-                    <Badge key={m} variant="outline">
-                      {m}
-                    </Badge>
-                  ))}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">🍽 Meals</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {e.mealOptions.map((m) => {
+                      const count = e.meals.meals.find((x) => x.meal === m)?.count ?? 0;
+                      return (
+                        <Badge key={m} variant="outline" className="gap-1.5">
+                          {m}
+                          <span className="font-display font-bold tabular-nums">{count}</span>
+                        </Badge>
+                      );
+                    })}
+                    {e.meals.unchosen > 0 && (
+                      <Badge variant="outline" className="gap-1.5 border-dashed text-muted-foreground">
+                        Not chosen yet <span className="font-bold tabular-nums">{e.meals.unchosen}</span>
+                      </Badge>
+                    )}
+                  </div>
                 </div>
+              )}
+              {e.meals.dietary.length > 0 && (
+                <details className="group rounded-xl bg-muted/60 px-3 py-2">
+                  <summary className="cursor-pointer list-none text-sm font-medium">
+                    🥗 {e.meals.dietary.length} dietary need{e.meals.dietary.length === 1 ? "" : "s"}
+                    <span className="text-muted-foreground"> · tap to see</span>
+                  </summary>
+                  <ul className="mt-2 space-y-0.5 text-sm">
+                    {e.meals.dietary.map((d, i) => (
+                      <li key={i}>
+                        <span className="font-medium">{d.name}:</span> <span className="text-muted-foreground">{d.needs}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
               <div className="flex flex-wrap items-center gap-3 border-t pt-3">
                 <UsersRound className="size-4 text-muted-foreground" />

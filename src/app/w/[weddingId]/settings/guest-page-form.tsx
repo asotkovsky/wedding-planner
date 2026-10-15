@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formObject, useAction } from "@/components/use-action";
-import type { FaqItem } from "@/db/schema";
+import type { FaqItem, RegistryLink } from "@/db/schema";
 import { updateGuestPage } from "./actions";
 
 export function GuestPageForm({
@@ -24,12 +24,16 @@ export function GuestPageForm({
     dressCode: string | null;
     rsvpDeadline: string | null;
     faq: FaqItem[];
+    registry: RegistryLink[];
   };
   previewHref: string | null;
   disabled: boolean;
 }) {
   const { pending, run } = useAction();
   const [faq, setFaq] = useState<(FaqItem & { key: number })[]>(content.faq.map((f, i) => ({ ...f, key: i })));
+  const [registry, setRegistry] = useState<(RegistryLink & { key: number })[]>(
+    content.registry.map((r, i) => ({ ...r, key: i })),
+  );
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -45,6 +49,9 @@ export function GuestPageForm({
           faq: faq
             .filter((q) => q.question.trim() && q.answer.trim())
             .map(({ question, answer }) => ({ question, answer })),
+          registry: registry
+            .filter((r) => r.label.trim() || r.url.trim())
+            .map(({ label, url }) => ({ label: label.trim() || "Registry", url })),
         }),
       "Guest page saved ✨",
     );
@@ -81,6 +88,50 @@ export function GuestPageForm({
           placeholder="Hotel blocks, booking codes, nearby options…"
           rows={3}
         />
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Registry</p>
+          {registry.map((r) => (
+            <div key={r.key} className="flex flex-wrap gap-2 sm:flex-nowrap">
+              <Input
+                value={r.label}
+                onChange={(e) =>
+                  setRegistry((list) => list.map((x) => (x.key === r.key ? { ...x, label: e.target.value } : x)))
+                }
+                placeholder="Name, e.g. Zola"
+                aria-label="Registry name"
+                className="sm:w-48"
+              />
+              <Input
+                value={r.url}
+                onChange={(e) =>
+                  setRegistry((list) => list.map((x) => (x.key === r.key ? { ...x, url: e.target.value } : x)))
+                }
+                placeholder="Link, e.g. zola.com/registry/…"
+                aria-label="Registry link"
+                inputMode="url"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Remove registry"
+                onClick={() => setRegistry((list) => list.filter((x) => x.key !== r.key))}
+              >
+                <Trash2 />
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-full border-dashed"
+            onClick={() => setRegistry((list) => [...list, { key: Date.now(), label: "", url: "" }])}
+          >
+            <Plus /> Add a registry
+          </Button>
+        </div>
 
         <div className="space-y-2">
           <p className="text-sm font-medium">FAQ</p>

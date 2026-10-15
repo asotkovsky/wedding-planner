@@ -1,6 +1,7 @@
 "use server";
 
 import { runAction } from "@/server/action";
+import * as guestImport from "@/server/guest-import";
 import * as guests from "@/server/guests";
 
 export async function createHousehold(weddingId: string, input: guests.HouseholdCreateInput) {
@@ -41,4 +42,12 @@ export async function setRsvp(weddingId: string, input: guests.RsvpInput) {
 
 export async function setPlusOne(weddingId: string, guestId: string, on: boolean) {
   return runAction(weddingId, (ctx) => guests.setPlusOne(ctx, guestId, on));
+}
+
+export async function readGuestList(weddingId: string, text: string) {
+  return runAction(weddingId, (ctx) => guestImport.readGuestList(ctx, text));
+}
+
+export async function importGuests(weddingId: string, households: guestImport.ImportedHousehold[], subEventIds: string[]) {
+  return runAction(weddingId, (ctx) => guestImport.importHouseholds(ctx, households, subEventIds));
 }

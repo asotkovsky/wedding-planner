@@ -87,7 +87,7 @@ export function MobileTabBar({ weddingId }: { weddingId: string }) {
     );
   };
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden print:hidden">
       {MOBILE_LEFT.map(tab)}
       <button
         type="button"

@@ -10,6 +10,7 @@ import { requireWeddingAccess } from "@/lib/access";
 import { logActivity } from "@/lib/activity";
 import { normalizeHex } from "@/lib/theme";
 import { runAction } from "@/server/action";
+import * as photos from "@/server/photos";
 import { updateGuestPageContent, type GuestPageContentInput } from "@/server/guest-page";
 
 export type FormState = { ok?: boolean; error?: string; errors?: Record<string, string[] | undefined> } | undefined;
@@ -165,4 +166,12 @@ export async function updateWeddingColors(
 
 export async function updateGuestPage(weddingId: string, input: GuestPageContentInput) {
   return runAction(weddingId, (ctx) => updateGuestPageContent(ctx, input));
+}
+
+export async function deletePhoto(weddingId: string, photoId: string) {
+  return runAction(weddingId, (ctx) => photos.deletePhoto(ctx, photoId));
+}
+
+export async function reorderPhotos(weddingId: string, photoIds: string[]) {
+  return runAction(weddingId, (ctx) => photos.reorderPhotos(ctx, photoIds));
 }

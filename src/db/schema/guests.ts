@@ -39,6 +39,8 @@ export const households = pgTable(
     postalCode: text("postal_code"),
     country: text("country"),
     notes: text("notes"),
+    // A note from the couple shown on this household's guest page.
+    personalNote: text("personal_note"),
     rsvpSubmittedAt: timestamp("rsvp_submitted_at", { withTimezone: true }),
     // Free-text note the household left for the couple with their RSVP.
     guestMessage: text("guest_message"),

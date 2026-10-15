@@ -118,3 +118,47 @@ function toUtc(ctx: Ctx, input: { startsAt?: string | null; endsAt?: string | nu
   if (startsAt && endsAt && endsAt < startsAt) throw new UserError("End time is before start time");
   return { startsAt, endsAt };
 }
+
+/**
+ * Per event: meal choices of guests who are attending (plus how many haven't chosen), and the
+ * dietary needs of attending guests. What the caterer will ask for.
+ */
+export async function getMealSummary(ctx: Ctx) {
+  const rows = await db
+    .select({
+      subEventId: subEventInvites.subEventId,
+      mealChoice: subEventInvites.mealChoice,
+      firstName: guests.firstName,
+      lastName: guests.lastName,
+      dietary: guests.dietaryRestrictions,
+    })
+    .from(subEventInvites)
+    .innerJoin(guests, eq(guests.id, subEventInvites.guestId))
+    .where(and(eq(subEventInvites.weddingId, ctx.weddingId), eq(subEventInvites.status, "attending")));
+
+  const byEvent = new Map<
+    string,
+    { meals: Map<string, number>; unchosen: number; dietary: { name: string; needs: string }[] }
+  >();
+  for (const r of rows) {
+    const e = byEvent.get(r.subEventId) ?? { meals: new Map<string, number>(), unchosen: 0, dietary: [] as MealSummary["dietary"] };
+    if (r.mealChoice) e.meals.set(r.mealChoice, (e.meals.get(r.mealChoice) ?? 0) + 1);
+    else e.unchosen++;
+    if (r.dietary?.trim()) {
+      e.dietary.push({ name: [r.firstName, r.lastName].filter(Boolean).join(" ") || "Plus-one", needs: r.dietary.trim() });
+    }
+    byEvent.set(r.subEventId, e);
+  }
+  return new Map(
+    [...byEvent].map(([id, e]) => [
+      id,
+      {
+        meals: [...e.meals].map(([meal, count]) => ({ meal, count })).sort((a, b) => b.count - a.count),
+        unchosen: e.unchosen,
+        dietary: e.dietary.sort((a, b) => a.name.localeCompare(b.name)),
+      },
+    ]),
+  );
+}
+
+export type MealSummary = { meals: { meal: string; count: number }[]; unchosen: number; dietary: { name: string; needs: string }[] };

@@ -5,6 +5,9 @@ import { listSubEvents } from "@/server/events";
 import { listHouseholds } from "@/server/guests";
 import { GuestsView } from "./guests-view";
 
+// Reading a long guest list with AI (an import) can take a minute or two.
+export const maxDuration = 300;
+
 export default async function GuestsPage({ params }: { params: Promise<{ weddingId: string }> }) {
   const { weddingId } = await params;
   const { ctx, wedding, role } = await getCtx(weddingId);

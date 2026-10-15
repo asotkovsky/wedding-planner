@@ -34,16 +34,22 @@ export function AuthForm({ mode, googleEnabled }: { mode: "sign-in" | "sign-up";
     router.refresh();
   }
 
+  // Arrived from a collaborator invite link (signed out): make that the headline.
+  const invited = next.startsWith("/invite/");
   const otherHref = `${mode === "sign-in" ? "/sign-up" : "/sign-in"}${next !== "/weddings" ? `?next=${encodeURIComponent(next)}` : ""}`;
 
   return (
     <Card className="w-full max-w-sm rounded-3xl sticker">
       <CardHeader>
         <CardTitle className="font-display text-2xl font-extrabold">
-          {mode === "sign-in" ? "Welcome back! 👋" : "Let's get planning! 💍"}
+          {invited ? "You're invited! 💌" : mode === "sign-in" ? "Welcome back! 👋" : "Let's get planning! 💍"}
         </CardTitle>
         <CardDescription>
-          {mode === "sign-in" ? "Your wedding to-dos missed you." : "Create your account. It takes about ten seconds."}
+          {invited
+            ? `${mode === "sign-in" ? "Sign in" : "Create an account"} to join the wedding's planning crew.`
+            : mode === "sign-in"
+              ? "Your wedding to-dos missed you."
+              : "Create your account. It takes about ten seconds."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

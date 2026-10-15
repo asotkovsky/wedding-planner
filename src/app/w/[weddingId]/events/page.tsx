@@ -1,13 +1,13 @@
 import { canEdit } from "@/lib/access";
 import { formatDateTime, formatTime, utcToLocal } from "@/lib/datetime";
 import { getCtx } from "@/server/action";
-import { listSubEvents } from "@/server/events";
+import { getMealSummary, listSubEvents } from "@/server/events";
 import { EventsView } from "./events-view";
 
 export default async function EventsPage({ params }: { params: Promise<{ weddingId: string }> }) {
   const { weddingId } = await params;
   const { ctx, wedding, role } = await getCtx(weddingId);
-  const events = await listSubEvents(ctx);
+  const [events, meals] = await Promise.all([listSubEvents(ctx), getMealSummary(ctx)]);
   const tz = wedding.timezone;
 
   return (
@@ -32,6 +32,7 @@ export default async function EventsPage({ params }: { params: Promise<{ wedding
         invited: e.invited,
         attending: e.attending,
         declined: e.declined,
+        meals: meals.get(e.id) ?? { meals: [], unchosen: 0, dietary: [] },
       }))}
     />
   );

@@ -7,20 +7,37 @@ import { budgetCategories, weddingMembers, weddings } from "@/db/schema";
 import { requireUser } from "@/lib/access";
 import { logActivity } from "@/lib/activity";
 import { DEFAULT_BUDGET_CATEGORIES } from "@/lib/defaults";
+import { normalizeHex } from "@/lib/theme";
+
+const optionalText = z
+  .string()
+  .trim()
+  .max(200)
+  .optional()
+  .transform((v) => v || null);
+
+const hex = z
+  .string()
+  .optional()
+  .transform((v) => normalizeHex(v));
 
 const createWeddingSchema = z.object({
-  partner1Name: z.string().trim().min(1, "Required"),
-  partner2Name: z.string().trim().min(1, "Required"),
-  date: z.iso.date().optional().or(z.literal("").transform(() => undefined)),
+  partner1Name: z.string().trim().min(1, "Required").max(100),
+  partner2Name: z.string().trim().min(1, "Required").max(100),
+  date: z.union([z.iso.date(), z.literal("").transform(() => null)]).optional(),
+  venueName: optionalText,
   currency: z.string().length(3).default("USD"),
   timezone: z.string().min(1).default("America/New_York"),
+  themePrimary: hex,
+  themeAccent: hex,
 });
 
-export type CreateWeddingState = { errors?: Record<string, string[] | undefined> } | undefined;
+export type CreateWeddingInput = z.input<typeof createWeddingSchema>;
+export type CreateWeddingResult = { errors: Record<string, string[] | undefined> } | undefined;
 
-export async function createWedding(_prev: CreateWeddingState, formData: FormData): Promise<CreateWeddingState> {
+export async function createWedding(raw: CreateWeddingInput): Promise<CreateWeddingResult> {
   const user = await requireUser();
-  const parsed = createWeddingSchema.safeParse(Object.fromEntries(formData));
+  const parsed = createWeddingSchema.safeParse(raw);
   if (!parsed.success) return { errors: z.flattenError(parsed.error).fieldErrors };
 
   const input = parsed.data;
@@ -29,6 +46,7 @@ export async function createWedding(_prev: CreateWeddingState, formData: FormDat
       .insert(weddings)
       .values({
         ...input,
+        date: input.date ?? null,
         name: `${input.partner1Name} & ${input.partner2Name}`,
         createdBy: user.id,
       })
@@ -51,5 +69,6 @@ export async function createWedding(_prev: CreateWeddingState, formData: FormDat
     return wedding.id;
   });
 
-  redirect(`/w/${weddingId}`);
+  // ?welcome=1 makes Home celebrate once.
+  redirect(`/w/${weddingId}?welcome=1`);
 }

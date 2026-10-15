@@ -122,12 +122,13 @@ export function Chat({
             </div>
           )}
 
-          {messages.map((m) => (
+          {messages.map((m, i) => (
             <Message
               key={m.id}
               message={m}
               onApproval={(id, approved) => addToolApprovalResponse({ id, approved })}
               disabled={busy}
+              live={busy && i === messages.length - 1}
             />
           ))}
 
@@ -183,14 +184,20 @@ export function Chat({
   );
 }
 
+/** Consecutive calls to the same tool, shown as one row (approval requests always stand alone). */
+type ToolRun = { name: string; parts: ToolPartType[] };
+
 function Message({
   message,
   onApproval,
   disabled,
+  live,
 }: {
   message: UIMessage;
   onApproval: (approvalId: string, approved: boolean) => void;
   disabled: boolean;
+  /** Whether this message is still being written; unfinished tool calls in older messages stopped. */
+  live: boolean;
 }) {
   // Context updates the server appended for the model; not part of the visible conversation.
   if (message.role === "system") return null;
@@ -204,9 +211,26 @@ function Message({
     );
   }
 
+  const items: (UIMessage["parts"][number] | ToolRun)[] = [];
+  for (const part of message.parts) {
+    if (part.type === "step-start" || (part.type === "reasoning" && !part.text.trim())) continue;
+    const last = items.at(-1);
+    if (isToolUIPart(part) && part.state !== "approval-requested") {
+      if (last && "parts" in last && last.name === toolName(part)) last.parts.push(part);
+      else items.push({ name: toolName(part), parts: [part] });
+    } else items.push(part);
+  }
+
   return (
     <div className="flex flex-col gap-2">
-      {message.parts.map((part, i) => {
+      {items.map((part, i) => {
+        if ("parts" in part) {
+          return part.parts.length === 1 ? (
+            <ToolPart key={i} part={part.parts[0]} onApproval={onApproval} disabled={disabled} live={live} />
+          ) : (
+            <ToolGroup key={i} run={part} live={live} />
+          );
+        }
         if (part.type === "text") return <Markdown key={i} text={part.text} />;
         if (part.type === "reasoning") {
           if (!part.text.trim()) return null;
@@ -219,7 +243,8 @@ function Message({
             </details>
           );
         }
-        if (isToolUIPart(part)) return <ToolPart key={i} part={part} onApproval={onApproval} disabled={disabled} />;
+        if (isToolUIPart(part))
+          return <ToolPart key={i} part={part} onApproval={onApproval} disabled={disabled} live={live} />;
         return null;
       })}
     </div>
@@ -254,6 +279,8 @@ const TOOL_LABELS: Record<string, string> = {
   list_tasks: "Looking up tasks",
   list_timeline: "Looking up the timeline",
   get_guest_page: "Checking the guest page",
+  set_rsvp: "Set RSVP",
+  set_rsvps: "Recording RSVPs",
 };
 
 function toolName(part: ToolPartType) {
@@ -265,14 +292,55 @@ function humanize(name: string) {
   return s[0].toUpperCase() + s.slice(1);
 }
 
+/** Whether a tool call is still waiting on its result. */
+const isPending = (part: ToolPartType) => part.state === "input-streaming" || part.state === "input-available";
+const hasFailed = (part: ToolPartType) =>
+  part.state === "output-error" || (part.state === "output-available" && (part.output as { ok?: boolean })?.ok === false);
+
+/** "Set rsvp ×14": one line for a run of identical tool calls, expandable to each result. */
+function ToolGroup({ run, live }: { run: ToolRun; live: boolean }) {
+  const running = run.parts.some(isPending);
+  const failed = run.parts.filter(hasFailed).length;
+  const icon =
+    running && live ? (
+      <Loader2 className="size-3.5 animate-spin" />
+    ) : failed ? (
+      <CircleAlert className="size-3.5" />
+    ) : running ? (
+      <X className="size-3.5" />
+    ) : (
+      <Check className="size-3.5" />
+    );
+  return (
+    <details className="group text-xs text-muted-foreground">
+      <summary className={cn("flex cursor-pointer list-none items-center gap-1.5 select-none", failed && "text-destructive")}>
+        {icon}
+        <span>
+          {TOOL_LABELS[run.name] ?? humanize(run.name)} ×{run.parts.length}
+          {failed > 0 && ` · ${failed} failed`}
+          {running && !live && " · didn't finish"}
+        </span>
+        <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+      </summary>
+      <div className="mt-1 ml-1.5 space-y-0.5 border-l pl-3">
+        {run.parts.map((p, i) => (
+          <ToolPart key={i} part={p} onApproval={() => {}} disabled live={live} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
 function ToolPart({
   part,
   onApproval,
   disabled,
+  live,
 }: {
   part: ToolPartType;
   onApproval: (approvalId: string, approved: boolean) => void;
   disabled: boolean;
+  live: boolean;
 }) {
   const name = toolName(part);
   const input = (part.input ?? {}) as Record<string, unknown>;
@@ -320,6 +388,10 @@ function ToolPart({
     label = `Denied: ${typeof input.summary === "string" ? input.summary : humanize(name)}`;
   } else if (part.state === "approval-responded") {
     label = part.approval.approved ? "Approved, applying…" : "Denied";
+  } else if (isPending(part) && !live) {
+    // The reply ended (stopped, or an error) before this call ran.
+    icon = <X className="size-3.5" />;
+    label = `${label} · didn't finish`;
   }
 
   return (

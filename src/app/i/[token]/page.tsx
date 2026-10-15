@@ -3,7 +3,10 @@ import {
   CalendarPlus,
   CircleHelp,
   Clock,
+  ExternalLink,
+  Gift,
   Heart,
+  Images,
   MapPin,
   Plane,
   Shirt,
@@ -17,7 +20,9 @@ import { WeddingTheme } from "@/components/wedding-theme";
 import { formatDateTime, formatDay, formatTime } from "@/lib/datetime";
 import { daysUntil, formatDate } from "@/lib/format";
 import { themeVars } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 import { getGuestPage } from "@/server/guest-page";
+import { PhotoGallery } from "./photo-gallery";
 import { RsvpForm } from "./rsvp-form";
 
 type Params = { params: Promise<{ token: string }> };
@@ -37,7 +42,9 @@ export default async function GuestPage({ params }: Params) {
   const { token } = await params;
   const page = await getGuestPage(token);
   if (!page) notFound();
-  const { wedding, household, events, timeline } = page;
+  const { wedding, household, events, timeline, photos } = page;
+  const [cover, ...gallery] = photos;
+  const photoSrc = (id: string) => `/i/${token}/photos/${id}`;
   const tz = wedding.timezone;
   const vars = themeVars(wedding.themePrimary, wedding.themeAccent);
   const days = wedding.date ? daysUntil(wedding.date) : null;
@@ -48,7 +55,9 @@ export default async function GuestPage({ params }: Params) {
   const sections = [
     events.length && { id: "events", label: "Events" },
     timeline.length && { id: "schedule", label: "Schedule" },
+    gallery.length && { id: "photos", label: "Photos" },
     (wedding.travelInfo || wedding.accommodationInfo) && { id: "travel", label: "Travel & stay" },
+    wedding.registry.length && { id: "registry", label: "Registry" },
     wedding.faq.length && { id: "faq", label: "FAQ" },
     { id: "rsvp", label: "RSVP" },
   ].filter(Boolean) as { id: string; label: string }[];
@@ -58,19 +67,44 @@ export default async function GuestPage({ params }: Params) {
       <WeddingTheme vars={vars} />
       <main className="mx-auto max-w-2xl space-y-10 px-4 py-8 md:py-12">
         {/* Hero */}
-        <header className="relative overflow-hidden rounded-3xl bg-brand-soft p-6 text-center sticker md:p-10">
-          <div className="pointer-events-none absolute inset-0 bg-dots opacity-50" />
-          <div className="relative space-y-4">
-            <p className="inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-sm font-semibold sticker-sm">
+        <header
+          className={cn(
+            "relative overflow-hidden rounded-3xl p-6 text-center sticker md:p-10",
+            cover ? "flex min-h-[26rem] flex-col justify-end text-white md:min-h-[32rem]" : "bg-brand-soft",
+          )}
+        >
+          {cover ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- served from our own route, already resized */}
+              <img
+                src={photoSrc(cover.id)}
+                alt={`${wedding.partner1Name} and ${wedding.partner2Name}`}
+                className="absolute inset-0 size-full object-cover"
+              />
+              {/* Darkens the photo where the text sits so it stays readable on any picture. */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/10" aria-hidden />
+            </>
+          ) : (
+            <div className="pointer-events-none absolute inset-0 bg-dots opacity-50" />
+          )}
+          <div className="relative space-y-4 [text-shadow:0_1px_12px_rgb(0_0_0/0.35)]">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-sm font-semibold text-foreground [text-shadow:none] sticker-sm">
               <Sparkles className="size-4 text-brand-ink" /> You&apos;re invited!
             </p>
             <h1 className="text-4xl leading-tight font-extrabold md:text-6xl">
               {wedding.partner1Name}
-              <Heart className="mx-2 inline size-8 -translate-y-1 fill-brand text-foreground md:size-11" aria-label="and" />
+              <Heart
+                className={cn("mx-2 inline size-8 -translate-y-1 fill-brand md:size-11", cover ? "text-white" : "text-foreground")}
+                aria-label="and"
+              />
               {wedding.partner2Name}
             </h1>
-            <div className="space-y-1 text-muted-foreground">
-              {wedding.date && <p className="text-lg font-semibold text-foreground">{formatDate(wedding.date, { dateStyle: "full" })}</p>}
+            <div className={cn("space-y-1", cover ? "text-white/85" : "text-muted-foreground")}>
+              {wedding.date && (
+                <p className={cn("text-lg font-semibold", cover ? "text-white" : "text-foreground")}>
+                  {formatDate(wedding.date, { dateStyle: "full" })}
+                </p>
+              )}
               {wedding.venueName && (
                 <p className="inline-flex items-center gap-1.5">
                   <MapPin className="size-4" /> {wedding.venueName}
@@ -78,7 +112,7 @@ export default async function GuestPage({ params }: Params) {
               )}
             </div>
             {days !== null && days >= 0 && (
-              <p className="font-display text-xl font-bold text-brand-ink">
+              <p className={cn("font-display text-xl font-bold", cover ? "text-white" : "text-brand-ink")}>
                 {days === 0 ? "It's today! 🎉" : days === 1 ? "Tomorrow! 🎉" : `${days} days to go`}
               </p>
             )}
@@ -94,6 +128,14 @@ export default async function GuestPage({ params }: Params) {
               We can&apos;t wait to celebrate with you. Here&apos;s everything you need to know, and your RSVP is at the
               bottom.
             </p>
+          )}
+          {household.personalNote && (
+            <figure className="mx-auto max-w-md rotate-[-1deg] rounded-2xl bg-brand-soft p-4 text-left sticker-sm">
+              <blockquote className="whitespace-pre-line">{household.personalNote}</blockquote>
+              <figcaption className="mt-2 text-sm font-semibold text-brand-ink">
+                With love, {wedding.partner1Name} & {wedding.partner2Name} 💌
+              </figcaption>
+            </figure>
           )}
           <nav className="flex flex-wrap justify-center gap-2 pt-2">
             {sections.map((s) => (
@@ -148,6 +190,27 @@ export default async function GuestPage({ params }: Params) {
                       </p>
                     )}
                     {e.description && <p className="text-sm whitespace-pre-line text-muted-foreground">{e.description}</p>}
+                    {e.startsAt && (
+                      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-3 text-sm">
+                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                          <CalendarPlus className="size-4" /> Add to calendar:
+                        </span>
+                        <a
+                          href={googleCalendarUrl(wedding.name, e, tz)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-medium underline-offset-2 hover:underline"
+                        >
+                          Google
+                        </a>
+                        <a
+                          href={`/i/${token}/calendar.ics?event=${e.id}`}
+                          className="font-medium underline-offset-2 hover:underline"
+                        >
+                          Apple / Outlook
+                        </a>
+                      </p>
+                    )}
                   </div>
                 </article>
               ))}
@@ -156,7 +219,8 @@ export default async function GuestPage({ params }: Params) {
                   href={`/i/${token}/calendar.ics`}
                   className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted"
                 >
-                  <CalendarPlus className="size-4" /> Add to my calendar
+                  <CalendarPlus className="size-4" /> Add {events.filter((e) => e.startsAt).length > 1 ? "all events" : "it"} to my
+                  calendar
                 </a>
               )}
               {wedding.dressCode && (
@@ -197,6 +261,12 @@ export default async function GuestPage({ params }: Params) {
           </Section>
         )}
 
+        {gallery.length > 0 && (
+          <Section id="photos" icon={Images} tone="peach" title="Photos">
+            <PhotoGallery photos={gallery.map((ph) => ({ ...ph, src: photoSrc(ph.id) }))} />
+          </Section>
+        )}
+
         {(wedding.travelInfo || wedding.accommodationInfo) && (
           <Section id="travel" icon={Plane} tone="sky" title="Travel & stay">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -208,8 +278,27 @@ export default async function GuestPage({ params }: Params) {
           </Section>
         )}
 
+        {wedding.registry.length > 0 && (
+          <Section id="registry" icon={Gift} tone="mint" title="Registry">
+            <p className="text-muted-foreground">Your presence is the best present! If you&apos;d like to give a gift:</p>
+            <div className="flex flex-wrap gap-2">
+              {wedding.registry.map((r, i) => (
+                <a
+                  key={i}
+                  href={r.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-2 rounded-xl border bg-card px-4 py-2.5 font-medium transition-colors hover:border-foreground"
+                >
+                  <Gift className="size-4 text-muted-foreground" /> {r.label} <ExternalLink className="size-3.5 text-muted-foreground" />
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
+
         {wedding.faq.length > 0 && (
-          <Section id="faq" icon={CircleHelp} tone="sun" title="Good questions">
+          <Section id="faq" icon={CircleHelp} tone="sun" title="FAQ">
             <div className="divide-y rounded-2xl border bg-card">
               {wedding.faq.map((f, i) => (
                 <details key={i} className="group p-4">
@@ -280,6 +369,26 @@ function InfoCard({ icon: Icon, title, body }: { icon: LucideIcon; title: string
       <p className="text-sm whitespace-pre-line text-muted-foreground">{body}</p>
     </div>
   );
+}
+
+/** A "create event" link for Google Calendar, prefilled with the event's time and place. */
+function googleCalendarUrl(
+  weddingName: string,
+  e: { name: string; startsAt: Date | null; endsAt: Date | null; locationName: string | null; address: string | null; description: string | null },
+  timezone: string,
+) {
+  const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const start = e.startsAt!;
+  const end = e.endsAt ?? new Date(start.getTime() + 2 * 3600_000);
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `${weddingName}: ${e.name}`,
+    dates: `${stamp(start)}/${stamp(end)}`,
+    ctz: timezone,
+    location: [e.locationName, e.address].filter(Boolean).join(", "),
+    details: e.description ?? "",
+  });
+  return `https://calendar.google.com/calendar/render?${params}`;
 }
 
 function listNames(names: string[]) {

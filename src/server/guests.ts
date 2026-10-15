@@ -39,6 +39,7 @@ const householdFields = {
   postalCode: optText(20),
   country: optText(100),
   notes: optText(),
+  personalNote: optText(2000),
 };
 
 export const householdCreateInput = z.object({
