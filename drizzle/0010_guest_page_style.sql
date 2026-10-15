@@ -1,0 +1,1 @@
+ALTER TABLE "weddings" ADD COLUMN "guest_page_style" text DEFAULT 'classic' NOT NULL;

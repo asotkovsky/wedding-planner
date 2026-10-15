@@ -25,7 +25,7 @@ import { OpenAssistantButton } from "@/components/assistant/open-assistant-butto
 import { celebrateFrom } from "@/components/celebrate";
 import { ConfirmButton, ConfirmDialog } from "@/components/confirm-button";
 import { EmptyState } from "@/components/empty-state";
-import { Field, NONE, noneToEmpty, SelectField, TextareaField } from "@/components/form-field";
+import { Field, NONE, noneToEmpty, PhoneField, SelectField, TextareaField } from "@/components/form-field";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -906,7 +906,7 @@ function HouseholdDialog({ ctx, household, onClose }: { ctx: Ctx; household?: Ho
 
           <section className="grid gap-3 sm:grid-cols-2">
             <Field name="email" label="Email" type="email" defaultValue={household?.email ?? ""} />
-            <Field name="phone" label="Phone" defaultValue={household?.phone ?? ""} />
+            <PhoneField name="phone" label="Phone" defaultValue={household?.phone ?? ""} />
             <Field name="addressLine1" label="Address" defaultValue={household?.addressLine1 ?? ""} className="sm:col-span-2" />
             <Field name="addressLine2" label="Address line 2" defaultValue={household?.addressLine2 ?? ""} className="sm:col-span-2" />
             <Field name="city" label="City" defaultValue={household?.city ?? ""} />
@@ -1007,7 +1007,7 @@ function GuestDialog({
           <Field name="firstName" label="First name" defaultValue={guest?.firstName ?? ""} required={!isPlusOne} />
           <Field name="lastName" label="Last name" defaultValue={guest?.lastName ?? ""} />
           <Field name="email" label="Email" type="email" defaultValue={guest?.email ?? ""} />
-          <Field name="phone" label="Phone" defaultValue={guest?.phone ?? ""} />
+          <PhoneField name="phone" label="Phone" defaultValue={guest?.phone ?? ""} />
           <SelectField
             name="side"
             label="Side"

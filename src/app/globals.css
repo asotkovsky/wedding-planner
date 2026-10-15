@@ -158,3 +158,20 @@
   background-image: radial-gradient(color-mix(in oklch, var(--brand) 35%, transparent) 1.2px, transparent 1.2px);
   background-size: 18px 18px;
 }
+
+/* Elegant guest page style: a quieter, traditional look. Overriding these tokens also
+   restyles shared pieces inside it, like the RSVP form. */
+.elegant {
+  --font-display: var(--font-elegant);
+  --radius: 0.25rem;
+  --background: #fbf9f5;
+  --card: #fffefb;
+  --muted: #f3efe7;
+  --border: #e4ddd0;
+  --input: #e4ddd0;
+}
+.elegant .sticker,
+.elegant .sticker-sm {
+  border: 1px solid var(--border);
+  box-shadow: none;
+}

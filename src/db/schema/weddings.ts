@@ -19,6 +19,8 @@ export type MemberRole = (typeof memberRole.enumValues)[number];
 
 export type FaqItem = { question: string; answer: string };
 export type RegistryLink = { label: string; url: string };
+export const GUEST_PAGE_STYLES = ["classic", "elegant"] as const;
+export type GuestPageStyle = (typeof GUEST_PAGE_STYLES)[number];
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
 
@@ -44,6 +46,12 @@ export const weddings = pgTable("weddings", {
   dressCode: text("dress_code"),
   faq: jsonb("faq").$type<FaqItem[]>().notNull().default([]),
   registry: jsonb("registry").$type<RegistryLink[]>().notNull().default([]),
+  // Look of the guest page: "classic" (playful) or "elegant" (traditional).
+  guestPageStyle: text("guest_page_style").$type<GuestPageStyle>().notNull().default("classic"),
+  // Who guests can ask questions (shown on the guest page).
+  contactName: text("contact_name"),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
   // Guests can submit or change their RSVP until the end of this day (wedding timezone).
   rsvpDeadline: date("rsvp_deadline"),
   // Keys of the Home "First steps" the couple chose to skip.

@@ -4,7 +4,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import { db } from "@/db";
 import { ageGroup, guestSide, guests, households, rsvpStatus, subEventInvites, subEvents } from "@/db/schema";
-import { assertOwned, log, optEmail, optText, UserError, type Ctx } from "./core";
+import { assertOwned, log, optEmail, optPhone, optText, UserError, type Ctx } from "./core";
 
 // ---------- Schemas ----------
 
@@ -12,7 +12,7 @@ const guestFields = {
   firstName: optText(100),
   lastName: optText(100),
   email: optEmail,
-  phone: optText(50),
+  phone: optPhone,
   side: z
     .union([z.literal(""), z.enum(guestSide.enumValues)])
     .nullish()
@@ -31,7 +31,7 @@ export const guestUpdateInput = z.object({ ...guestFields, bringsPlusOne }).part
 const householdFields = {
   name: optText(200),
   email: optEmail,
-  phone: optText(50),
+  phone: optPhone,
   addressLine1: optText(200),
   addressLine2: optText(200),
   city: optText(100),

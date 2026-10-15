@@ -4,6 +4,7 @@ import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { db } from "@/db";
 import { logActivity } from "@/lib/activity";
+import { formatPhone } from "@/lib/phone";
 
 /**
  * An already-authorized request context. Services trust it, so only build one after
@@ -55,6 +56,9 @@ export const optText = (max = 2000) =>
     .max(max)
     .nullish()
     .transform(emptyToNull);
+
+/** A phone number, formatted 555-555-5555 when it's a 10-digit US number. */
+export const optPhone = optText(50).transform((v) => (v ? formatPhone(v) : v));
 
 export const optEmail = z
   .union([z.literal(""), z.email()])

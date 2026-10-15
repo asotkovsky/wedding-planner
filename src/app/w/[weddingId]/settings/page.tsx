@@ -79,6 +79,10 @@ export default async function SettingsPage({ params }: { params: Promise<{ weddi
               rsvpDeadline: wedding.rsvpDeadline,
               faq: wedding.faq,
               registry: wedding.registry,
+              guestPageStyle: wedding.guestPageStyle,
+              contactName: wedding.contactName,
+              contactPhone: wedding.contactPhone,
+              contactEmail: wedding.contactEmail,
             }}
             previewHref={preview ? `/i/${preview.token}` : null}
             disabled={!canEdit(role)}

@@ -2,10 +2,10 @@ import "server-only";
 import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { guests, households, subEventInvites, subEvents, timelineItems, weddings } from "@/db/schema";
+import { GUEST_PAGE_STYLES, guests, households, subEventInvites, subEvents, timelineItems, weddings } from "@/db/schema";
 import { logActivity } from "@/lib/activity";
 import { todayIn } from "@/lib/datetime";
-import { log, optDate, optText, UserError, type Ctx } from "./core";
+import { log, optDate, optEmail, optPhone, optText, UserError, type Ctx } from "./core";
 import { withPlusOnesAfterHosts } from "./guests";
 import { listPhotos } from "./photos";
 
@@ -83,6 +83,10 @@ export async function getGuestPage(token: string) {
       dressCode: wedding.dressCode,
       faq: wedding.faq,
       registry: wedding.registry,
+      guestPageStyle: wedding.guestPageStyle,
+      contact: wedding.contactName
+        ? { name: wedding.contactName, phone: wedding.contactPhone, email: wedding.contactEmail }
+        : null,
       rsvpDeadline: wedding.rsvpDeadline,
       themePrimary: wedding.themePrimary,
       themeAccent: wedding.themeAccent,
@@ -279,6 +283,10 @@ export const guestPageContentInput = z
       .max(40)
       .optional(),
     registry: z.array(registryLink).max(10).optional(),
+    guestPageStyle: z.enum(GUEST_PAGE_STYLES),
+    contactName: optText(100),
+    contactPhone: optPhone,
+    contactEmail: optEmail,
   })
   .partial();
 export type GuestPageContentInput = z.input<typeof guestPageContentInput>;
@@ -293,6 +301,10 @@ export async function getGuestPageContent(ctx: Ctx) {
       rsvpDeadline: weddings.rsvpDeadline,
       faq: weddings.faq,
       registry: weddings.registry,
+      guestPageStyle: weddings.guestPageStyle,
+      contactName: weddings.contactName,
+      contactPhone: weddings.contactPhone,
+      contactEmail: weddings.contactEmail,
     })
     .from(weddings)
     .where(eq(weddings.id, ctx.weddingId));

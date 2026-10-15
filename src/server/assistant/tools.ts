@@ -570,6 +570,16 @@ export function buildTools(ctx: Ctx, { canWrite }: { canWrite: boolean }) {
           .array(z.object({ label: z.string().describe("e.g. 'Zola', 'Honeymoon fund'"), url: z.string() }))
           .optional()
           .describe("Replaces the whole list of registry links"),
+        guestPageStyle: z
+          .enum(["classic", "elegant"])
+          .optional()
+          .describe("classic: playful and colorful; elegant: traditional wedding website with serif type"),
+        contactName: z
+          .string()
+          .nullish()
+          .describe("Who guests can contact with questions, e.g. 'Jamie Rivera, our planner'. Null removes the contact."),
+        contactPhone: z.string().nullish(),
+        contactEmail: z.string().nullish(),
       }),
       execute: (input) =>
         write((r) => `Updated the guest page (${r.updated.join(", ")})`, () => guestPage.updateGuestPageContent(ctx, input)),

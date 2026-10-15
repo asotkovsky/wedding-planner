@@ -2,13 +2,40 @@
 
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Field, TextareaField } from "@/components/form-field";
+import { Field, PhoneField, TextareaField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formObject, useAction } from "@/components/use-action";
-import type { FaqItem, RegistryLink } from "@/db/schema";
+import type { FaqItem, GuestPageStyle, RegistryLink } from "@/db/schema";
+import { cn } from "@/lib/utils";
 import { updateGuestPage } from "./actions";
+
+const STYLES: { value: GuestPageStyle; label: string; description: string; preview: React.ReactNode }[] = [
+  {
+    value: "classic",
+    label: "Classic",
+    description: "Playful and colorful, in your wedding colors.",
+    preview: (
+      <span className="flex h-20 items-center justify-center rounded-lg bg-brand-soft font-display text-xl font-extrabold sticker-sm">
+        A <span className="mx-1 text-brand">♥</span> S
+      </span>
+    ),
+  },
+  {
+    value: "elegant",
+    label: "Elegant",
+    description: "Timeless and refined, like a traditional wedding website.",
+    preview: (
+      <span className="flex h-20 flex-col items-center justify-center border border-[#e4ddd0] bg-[#fbf9f5] font-serif">
+        <span className="text-[9px] tracking-[0.25em] text-muted-foreground uppercase">We&apos;re getting married</span>
+        <span className="text-xl">
+          A <span className="text-brand-ink italic">&amp;</span> S
+        </span>
+      </span>
+    ),
+  },
+];
 
 export function GuestPageForm({
   weddingId,
@@ -25,12 +52,17 @@ export function GuestPageForm({
     rsvpDeadline: string | null;
     faq: FaqItem[];
     registry: RegistryLink[];
+    guestPageStyle: GuestPageStyle;
+    contactName: string | null;
+    contactPhone: string | null;
+    contactEmail: string | null;
   };
   previewHref: string | null;
   disabled: boolean;
 }) {
   const { pending, run } = useAction();
   const [faq, setFaq] = useState<(FaqItem & { key: number })[]>(content.faq.map((f, i) => ({ ...f, key: i })));
+  const [style, setStyle] = useState<GuestPageStyle>(content.guestPageStyle);
   const [registry, setRegistry] = useState<(RegistryLink & { key: number })[]>(
     content.registry.map((r, i) => ({ ...r, key: i })),
   );
@@ -41,10 +73,14 @@ export function GuestPageForm({
     await run(
       () =>
         updateGuestPage(weddingId, {
+          guestPageStyle: style,
           welcomeMessage: f.welcomeMessage,
           dressCode: f.dressCode,
           travelInfo: f.travelInfo,
           accommodationInfo: f.accommodationInfo,
+          contactName: f.contactName,
+          contactPhone: f.contactPhone,
+          contactEmail: f.contactEmail,
           rsvpDeadline: f.rsvpDeadline,
           faq: faq
             .filter((q) => q.question.trim() && q.answer.trim())
@@ -63,6 +99,28 @@ export function GuestPageForm({
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <fieldset disabled={disabled} className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Style</p>
+          <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Guest page style">
+            {STYLES.map((s) => (
+              <button
+                key={s.value}
+                type="button"
+                role="radio"
+                aria-checked={style === s.value}
+                onClick={() => setStyle(s.value)}
+                className={cn(
+                  "space-y-2 rounded-xl border-2 p-3 text-left transition-colors hover:bg-muted",
+                  style === s.value ? "border-foreground" : "border-transparent bg-muted/50",
+                )}
+              >
+                {s.preview}
+                <span className="block text-sm font-semibold">{s.label}</span>
+                <span className="block text-xs text-muted-foreground">{s.description}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <TextareaField
           name="welcomeMessage"
           label="Welcome message"
@@ -88,6 +146,23 @@ export function GuestPageForm({
           placeholder="Hotel blocks, booking codes, nearby options…"
           rows={3}
         />
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Contact for questions</p>
+          <p className="text-xs text-muted-foreground">
+            Shown on the guest page so guests know who to ask. Leave the name empty to hide it.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field
+              name="contactName"
+              label="Name"
+              defaultValue={content.contactName ?? ""}
+              placeholder="e.g. Jamie, our planner"
+            />
+            <PhoneField name="contactPhone" label="Phone" defaultValue={content.contactPhone ?? ""} />
+            <Field name="contactEmail" label="Email" type="email" defaultValue={content.contactEmail ?? ""} />
+          </div>
+        </div>
 
         <div className="space-y-2">
           <p className="text-sm font-medium">Registry</p>

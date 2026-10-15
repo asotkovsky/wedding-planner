@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { formatPhoneAsTyped } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
 type FieldProps = {
@@ -17,6 +18,23 @@ export function Field({ name, label, className, ...props }: FieldProps) {
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} name={name} step={props.type === "number" ? "0.01" : undefined} {...props} />
     </div>
+  );
+}
+
+/** A phone input that formats US numbers as you type (555-555-5555). */
+export function PhoneField(props: Omit<FieldProps, "type">) {
+  return (
+    <Field
+      type="tel"
+      inputMode="tel"
+      autoComplete="tel"
+      {...props}
+      onInput={(e) => {
+        const input = e.currentTarget;
+        input.value = formatPhoneAsTyped(input.value);
+        props.onInput?.(e);
+      }}
+    />
   );
 }
 

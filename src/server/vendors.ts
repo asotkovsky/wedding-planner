@@ -4,7 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { budgetCategories, vendorPayments, vendors, vendorStatus } from "@/db/schema";
 import { todayIn } from "@/lib/datetime";
-import { assertOwned, log, money, optDate, optEmail, optMoney, optText, optUrl, optUuid, UserError, type Ctx } from "./core";
+import { assertOwned, log, money, optDate, optEmail, optMoney, optPhone, optText, optUrl, optUuid, UserError, type Ctx } from "./core";
 
 const vendorFields = {
   name: z.string().trim().min(1).max(200),
@@ -12,7 +12,7 @@ const vendorFields = {
   status: z.enum(vendorStatus.enumValues).optional(),
   contactName: optText(200),
   email: optEmail,
-  phone: optText(50),
+  phone: optPhone,
   website: optUrl,
   /** Total contract price in major currency units. */
   contractTotal: optMoney,

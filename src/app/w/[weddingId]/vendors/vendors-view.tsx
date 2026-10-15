@@ -22,6 +22,7 @@ import {
   Field,
   NONE,
   noneToEmpty,
+  PhoneField,
   SelectField,
   TextareaField,
 } from "@/components/form-field";
@@ -534,11 +535,7 @@ function VendorDialog({
             type="email"
             defaultValue={vendor?.email ?? ""}
           />
-          <Field
-            name="phone"
-            label="Phone"
-            defaultValue={vendor?.phone ?? ""}
-          />
+          <PhoneField name="phone" label="Phone" defaultValue={vendor?.phone ?? ""} />
           <Field
             name="website"
             label="Website"

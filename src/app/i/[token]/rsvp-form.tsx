@@ -36,6 +36,28 @@ function initialDraft(g: Guest): GuestDraft {
   };
 }
 
+/** Wording per guest page style: Classic is playful, Elegant is traditional. */
+const COPY = {
+  classic: {
+    accept: "🎉 Joyfully accepts",
+    decline: "💌 Regretfully declines",
+    submit: "Send my RSVP",
+    notePlaceholder: "Song requests, well-wishes, terrible puns…",
+    thanksComing: "Yay! See you there! 🎉",
+    thanksNotComing: "Thanks for letting us know 💌",
+    closed: "RSVPs are closed. If you still need to reply, please reach out to the couple directly. 💌",
+  },
+  elegant: {
+    accept: "Joyfully accepts",
+    decline: "Regretfully declines",
+    submit: "Send reply",
+    notePlaceholder: "Well wishes, song requests…",
+    thanksComing: "Thank you. We can't wait to celebrate with you.",
+    thanksNotComing: "Thank you for letting us know. You'll be missed.",
+    closed: "Replies are now closed. If you still need to respond, please contact the couple directly.",
+  },
+};
+
 export function RsvpForm({
   token,
   open,
@@ -43,6 +65,7 @@ export function RsvpForm({
   household,
   guests,
   events,
+  variant = "classic",
 }: {
   token: string;
   open: boolean;
@@ -50,7 +73,10 @@ export function RsvpForm({
   household: GuestPageData["household"];
   guests: Guest[];
   events: Event[];
+  variant?: keyof typeof COPY;
 }) {
+  const copy = COPY[variant];
+  const elegant = variant === "elegant";
   const [drafts, setDrafts] = useState<Record<string, GuestDraft>>(() =>
     Object.fromEntries(guests.map((g) => [g.id, initialDraft(g)])),
   );
@@ -117,7 +143,7 @@ export function RsvpForm({
           </span>
           <div>
             <p className="font-display text-xl font-bold">
-              {done ? (attendingAny ? "Yay! See you there! 🎉" : "Thanks for letting us know 💌") : "Thanks for your RSVP!"}
+              {done ? (attendingAny ? copy.thanksComing : copy.thanksNotComing) : "Thanks for your RSVP!"}
             </p>
             <p className="text-sm text-muted-foreground">
               {done ? "Your reply is in." : "Here's what you told us."}{" "}
@@ -165,7 +191,7 @@ export function RsvpForm({
   if (!open) {
     return (
       <p className="rounded-2xl border bg-card p-5 text-muted-foreground">
-        RSVPs are closed. If you still need to reply, please reach out to the couple directly. 💌
+        {copy.closed}
       </p>
     );
   }
@@ -186,7 +212,7 @@ export function RsvpForm({
             <legend className="sr-only">{displayName(g, d)}</legend>
             {needsName ? (
               <div className="space-y-2">
-                <p className="font-display text-lg font-bold">
+                <p className={elegant ? "font-display text-2xl font-medium" : "font-display text-lg font-bold"}>
                   {g.hostFirstName ? `${g.hostFirstName}'s guest` : "Your plus-one"}
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -208,7 +234,7 @@ export function RsvpForm({
                 </div>
               </div>
             ) : (
-              <p className="font-display text-lg font-bold">{displayName(g, d)}</p>
+              <p className={elegant ? "font-display text-2xl font-medium" : "font-display text-lg font-bold"}>{displayName(g, d)}</p>
             )}
 
             {g.invites.map((i) => {
@@ -217,21 +243,23 @@ export function RsvpForm({
               const a = d.answers[i.subEventId] ?? {};
               return (
                 <div key={i.subEventId} className="space-y-2">
-                  <p className="text-sm font-medium">{event.name}</p>
+                  <p className={elegant ? "font-display text-xl" : "text-sm font-medium"}>{event.name}</p>
                   <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={`${displayName(g, d)}: ${event.name}`}>
                     <Choice
+                      elegant={elegant}
                       selected={a.status === "attending"}
                       tone="yes"
                       onClick={() => answer(g.id, i.subEventId, { status: "attending" })}
                     >
-                      🎉 Joyfully accepts
+                      {copy.accept}
                     </Choice>
                     <Choice
+                      elegant={elegant}
                       selected={a.status === "declined"}
                       tone="no"
                       onClick={() => answer(g.id, i.subEventId, { status: "declined" })}
                     >
-                      💌 Regretfully declines
+                      {copy.decline}
                     </Choice>
                   </div>
                   {a.status === "attending" && event.mealOptions.length > 0 && (
@@ -244,8 +272,15 @@ export function RsvpForm({
                           aria-checked={a.mealChoice === m}
                           onClick={() => answer(g.id, i.subEventId, { mealChoice: m })}
                           className={cn(
-                            "rounded-full border px-3 py-1 text-sm transition-colors",
-                            a.mealChoice === m ? "border-foreground bg-pop-soft font-semibold" : "hover:bg-muted",
+                            "border transition-colors",
+                            elegant ? "rounded-sm px-4 py-1.5 font-display text-lg" : "rounded-full px-3 py-1 text-sm",
+                            a.mealChoice === m
+                              ? elegant
+                                ? "border-foreground bg-foreground text-background"
+                                : "border-foreground bg-pop-soft font-semibold"
+                              : elegant
+                                ? "hover:border-foreground"
+                                : "hover:bg-muted",
                           )}
                         >
                           {m}
@@ -283,7 +318,7 @@ export function RsvpForm({
             id="rsvp-message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Song requests, well-wishes, terrible puns…"
+            placeholder={copy.notePlaceholder}
           />
         </div>
       </div>
@@ -294,7 +329,7 @@ export function RsvpForm({
         </p>
       )}
       <Button type="submit" disabled={pending} className="h-12 w-full text-base">
-        {pending ? "Sending…" : "Send my RSVP"}
+        {pending ? "Sending…" : copy.submit}
       </Button>
     </form>
   );
@@ -303,14 +338,37 @@ export function RsvpForm({
 function Choice({
   selected,
   tone,
+  elegant,
   onClick,
   children,
 }: {
   selected: boolean;
   tone: "yes" | "no";
+  /** Serif type and quiet black-and-ivory states, for the Elegant guest page. */
+  elegant: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  if (elegant) {
+    return (
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        onClick={onClick}
+        className={cn(
+          "rounded-sm border px-3 py-2.5 font-display text-lg transition-colors",
+          selected
+            ? tone === "yes"
+              ? "border-foreground bg-foreground text-background"
+              : "border-foreground bg-muted text-foreground"
+            : "text-muted-foreground hover:border-foreground hover:text-foreground",
+        )}
+      >
+        {children}
+      </button>
+    );
+  }
   return (
     <button
       type="button"
